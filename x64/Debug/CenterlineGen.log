@@ -3,8 +3,12 @@ C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\DBSCAN.h(31,21): 
 C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\jc_voronoi.h(335,23): warning C4244: 'argument': conversion from 'jcv_real' to 'float', possible loss of data
 C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\jc_voronoi.h(1080,22): warning C4244: 'argument': conversion from 'jcv_real' to 'float', possible loss of data
 C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\jc_voronoi_clip.h(71,12): warning C4244: 'argument': conversion from 'jcv_real' to 'float', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(380,21): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(465,35): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(537,23): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(361,21): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(495,71): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(495,57): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(495,43): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(495,29): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(535,36): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(535,23): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
 LINK : warning LNK4098: defaultlib 'LIBCMTD' conflicts with use of other libs; use /NODEFAULTLIB:library
   CenterlineGen.vcxproj -> C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\x64\Debug\CenterlineGen.exe

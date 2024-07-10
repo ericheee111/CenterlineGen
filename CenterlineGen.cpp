@@ -1,3 +1,4 @@
+#pragma comment(lib, "geos.lib")
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -5,20 +6,24 @@
 #include <vector>
 #include <limits>
 #include <map>
-#include "DBSCAN.h"
 #include <algorithm>
 #include <cmath>
+#include <numeric>
+#include <cstdlib>
+
+#define JC_VORONOI_IMPLEMENTATION
+#define JC_VORONOI_CLIP_IMPLEMENTATION
+#define OUTPIC
+
+#include "DBSCAN.h"
+#include "jc_voronoi.h"
+#include "jc_voronoi_clip.h"
+#include "stb_image_write.h"
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_interp.h>
-#include <numeric>
-#define JC_VORONOI_IMPLEMENTATION
-#include "jc_voronoi.h"
-#define JC_VORONOI_CLIP_IMPLEMENTATION
-#include "jc_voronoi_clip.h"
-#include <cstdlib>
-#include "stb_image_write.h"
+//#include <geos.h>
+//#include "strtree.hpp"
 
-extern "C" int wrap_stbi_write_png(char const* filename, int w, int h, int comp, const void* data, int stride_in_bytes);
 
 typedef struct VoronoiContext_ {
     uint32_t num_points;
@@ -119,30 +124,6 @@ static void draw_triangle(const jcv_point* v0, const jcv_point* v1, const jcv_po
     }
 }
 
-static void relax_points(const jcv_diagram* diagram, jcv_point* points)
-{
-    const jcv_site* sites = jcv_diagram_get_sites(diagram);
-    for (int i = 0; i < diagram->numsites; ++i)
-    {
-        const jcv_site* site = &sites[i];
-        jcv_point sum = site->p;
-        int count = 1;
-
-        const jcv_graphedge* edge = site->edges;
-
-        while (edge)
-        {
-            sum.x += edge->pos[0].x;
-            sum.y += edge->pos[0].y;
-            ++count;
-            edge = edge->next;
-        }
-
-        points[site->index].x = sum.x / (jcv_real)count;
-        points[site->index].y = sum.y / (jcv_real)count;
-    }
-}
-
 // Remaps the point from the input space to image space
 static inline jcv_point remap(const jcv_point* pt, const jcv_point* min, const jcv_point* max, const jcv_point* scale)
 {
@@ -156,8 +137,8 @@ static inline jcv_point remap(const jcv_point* pt, const jcv_point* min, const j
 
 
 
-std::vector<Point> readCSV(const std::string& filename) {
-    std::vector<Point> points;
+std::vector<PointDB> readCSV(const std::string& filename) {
+    std::vector<PointDB> points;
     std::ifstream file(filename);
     std::string line, value;
 
@@ -186,7 +167,7 @@ std::vector<Point> readCSV(const std::string& filename) {
     return points;
 }
 
-std::vector<std::pair<double, double>> findBoundingBox(const std::vector<Point>& points) {
+std::vector<std::pair<double, double>> findBoundingBox(const std::vector<PointDB>& points) {
     // Initialize min and max values
     double minX = std::numeric_limits<double>::max();
     double maxX = std::numeric_limits<double>::min();
@@ -209,7 +190,7 @@ std::vector<std::pair<double, double>> findBoundingBox(const std::vector<Point>&
     return { {minX, minY}, {maxX, maxY} };
 }
 
-void printResults(vector<Point>& points, int num_points)
+void printResults(vector<PointDB>& points, int num_points)
 {
     int i = 0;
     printf("Number of points: %u\n"
@@ -226,21 +207,21 @@ void printResults(vector<Point>& points, int num_points)
     }
 }
 
-bool compareByY(const Point& a, const Point& b) {
+bool compareByY(const PointDB& a, const PointDB& b) {
     return a.y < b.y;
 }
 
-std::vector<Point> moving_average(std::vector<Point>& data, size_t window_size) {
+std::vector<PointDB> moving_average(std::vector<PointDB>& data, size_t window_size) {
     size_t n = data.size();
     window_size += 2;
 
     // Extend data with padding at both ends
-    std::vector<Point> padded_data = data;
+    std::vector<PointDB> padded_data = data;
     padded_data.insert(padded_data.begin(), window_size, data.front());
     padded_data.insert(padded_data.end(), window_size, data.back());
 
     // Calculate moving average including padding
-    std::vector<Point> smoothed(n);
+    std::vector<PointDB> smoothed(n);
     for (size_t i = 0; i < n; ++i) {
         double sum_x = 0.0, sum_y = 0.0;
         for (size_t j = 0; j < 2 * window_size + 1; ++j) {
@@ -254,8 +235,8 @@ std::vector<Point> moving_average(std::vector<Point>& data, size_t window_size) 
     return smoothed;
 }
 
-std::vector<std::vector<Point>> apply_moving_average(std::vector<std::vector<Point>>& lines) {
-    std::vector<std::vector<Point>> ret;
+std::vector<std::vector<PointDB>> apply_moving_average(std::vector<std::vector<PointDB>>& lines) {
+    std::vector<std::vector<PointDB>> ret;
     for (auto& line : lines) {
         size_t window_size = std::min(2, (int)(line.size() / 5));
         ret.push_back(moving_average(line, window_size));
@@ -263,20 +244,20 @@ std::vector<std::vector<Point>> apply_moving_average(std::vector<std::vector<Poi
     return ret;
 }
 
-std::vector<std::pair<int, Point>> find_closest_to_corner(const std::vector<std::pair<double, double>>& bounding_box, std::vector<std::vector<Point>>& lane_lines) {
+std::vector<std::pair<int, PointDB>> find_closest_to_corner(const std::vector<std::pair<double, double>>& bounding_box, std::vector<std::vector<PointDB>>& lane_lines) {
     // Extract corners from bounding box
     double x = bounding_box[0].first;
     double y = bounding_box[0].second;
     double x1 = bounding_box[1].first;
     double y1 = bounding_box[1].second;
 
-    Point topleft = { x, y1 };
-    Point topright = { x1, y1 };
-    Point bottomleft = { x, y };
-    Point bottomright = { x1, y };
+    PointDB topleft = { x, y1 };
+    PointDB topright = { x1, y1 };
+    PointDB bottomleft = { x, y };
+    PointDB bottomright = { x1, y };
 
-    std::vector<Point> corners = { topleft, topright, bottomleft, bottomright };
-    std::vector<std::pair<int, Point>> closest_points(corners.size(), std::make_pair(-1, Point{ 0, 0 }));
+    std::vector<PointDB> corners = { topleft, topright, bottomleft, bottomright };
+    std::vector<std::pair<int, PointDB>> closest_points(corners.size(), std::make_pair(-1, PointDB{ 0, 0 }));
 
     for (size_t i = 0; i < corners.size(); ++i) {
         double min_distance = std::numeric_limits<double>::infinity();
@@ -294,9 +275,9 @@ std::vector<std::pair<int, Point>> find_closest_to_corner(const std::vector<std:
     return closest_points;
 }
 
-void merge_lines_on_side(const std::vector<std::pair<double, double>>& bounding_box, std::vector<std::vector<Point>>& lane_lines) {
+void merge_lines_on_side(const std::vector<std::pair<double, double>>& bounding_box, std::vector<std::vector<PointDB>>& lane_lines) {
     
-    std::vector<std::pair<int, Point>> closest_points = find_closest_to_corner(bounding_box, lane_lines);
+    std::vector<std::pair<int, PointDB>> closest_points = find_closest_to_corner(bounding_box, lane_lines);
     
     int leftmost_label = closest_points[0].first;
     int rightmost_label = closest_points[1].first;
@@ -312,7 +293,7 @@ void merge_lines_on_side(const std::vector<std::pair<double, double>>& bounding_
     }
 }
 
-std::vector<Point> smooth_line(const std::vector<Point>& line) {
+std::vector<PointDB> smooth_line(const std::vector<PointDB>& line) {
     // Extract x and y coordinates from the line and swap them
     size_t n = line.size();
     double* x = new double[n];
@@ -333,7 +314,7 @@ std::vector<Point> smooth_line(const std::vector<Point>& line) {
     gsl_spline_init(spline, x, y, n);
 
     // Calculate interpolated values
-    std::vector<Point> smoothed_line(num_points);
+    std::vector<PointDB> smoothed_line(num_points);
     for (size_t i = 0; i < num_points; i++) {
         double xi = min_x + i * (max_x - min_x) / (num_points - 1);
         double yi = gsl_spline_eval(spline, xi, acc);
@@ -350,8 +331,8 @@ std::vector<Point> smooth_line(const std::vector<Point>& line) {
 }
 
 // Function to smooth lines using B-spline
-std::vector<std::vector<Point>> smooth_lines(const std::vector<std::vector<Point>>& lines) {
-    std::vector<std::vector<Point>> smoothed_lines;
+std::vector<std::vector<PointDB>> smooth_lines(const std::vector<std::vector<PointDB>>& lines) {
+    std::vector<std::vector<PointDB>> smoothed_lines;
 
     for (const auto& line : lines) {
         /*for (auto& pt : line)
@@ -363,7 +344,7 @@ std::vector<std::vector<Point>> smooth_lines(const std::vector<std::vector<Point
     return smoothed_lines;
 }
 
-void convert_to_jcv_points(const std::vector<std::vector<Point>>& lane_lines, vorcon& vc) {
+void convert_to_jcv_points(const std::vector<std::vector<PointDB>>& lane_lines, vorcon& vc) {
 	size_t num_points = 0;
 	for (const auto& line : lane_lines) {
 		num_points += line.size();
@@ -381,7 +362,7 @@ void convert_to_jcv_points(const std::vector<std::vector<Point>>& lane_lines, vo
     vc.points = points;
 }
 
-jcv_point* convert_to_jcv_points(const std::vector<Point>& lane) {
+jcv_point* convert_to_jcv_points(const std::vector<PointDB>& lane) {
 	jcv_point* points = new jcv_point[lane.size()];
 	for (size_t i = 0; i < lane.size(); i++) {
 		points[i] = { lane[i].x, lane[i].y };
@@ -389,7 +370,7 @@ jcv_point* convert_to_jcv_points(const std::vector<Point>& lane) {
 	return points;
 }
 
-void savetofile(std::vector<std::vector<Point>> lines) {
+void savetofile(std::vector<std::vector<PointDB>> lines) {
     std::ofstream file("data.txt");
     if (!file.is_open()) return;
 
@@ -403,10 +384,16 @@ void savetofile(std::vector<std::vector<Point>> lines) {
     file.close();
 }
 
+jcv_point calc_diff(std::vector<std::pair<double, double>> bounding) {
+    double width = bounding[1].first - bounding[0].first;
+    double height = bounding[1].second - bounding[0].second;
+    return { width, height };
+}
+
 int main()
 {
     std::string filename = "data3.csv";
-    std::vector<Point> lane = readCSV(filename);
+    std::vector<PointDB> lane = readCSV(filename);
 
     std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lane);
     DBSCAN ds(MINIMUM_POINTS, EPSILON, lane);
@@ -417,7 +404,7 @@ int main()
     //std::cout << ds.getClusterCount() << std::endl;
 
     // separate each line
-    std::vector<std::vector<Point>> lane_lines(ds.getClusterCount());
+    std::vector<std::vector<PointDB>> lane_lines(ds.getClusterCount());
     for (uint32_t i = 0; i < lane.size(); i++) {
         lane_lines[lane[i].clusterID - 1].push_back(lane[i]);
     }
@@ -440,17 +427,18 @@ int main()
 
     lane_lines = smooth_lines(lane_lines);
 
-    std::vector<std::pair<int, Point>> closest_points = find_closest_to_corner(bounding_box, lane_lines);
+    std::vector<std::pair<int, PointDB>> closest_points = find_closest_to_corner(bounding_box, lane_lines);
 
     int leftmost_label = closest_points[0].first;
     int rightmost_label = closest_points[1].first;
     
     // get clipping polygon
-    std::vector<Point> bdry = lane_lines[leftmost_label];
-    std::vector<Point> rightmostlane = lane_lines[rightmost_label];
+    std::vector<PointDB> bdry = lane_lines[leftmost_label];
+    std::vector<PointDB> rightmostlane = lane_lines[rightmost_label];
     std::reverse(rightmostlane.begin(), rightmostlane.end());
     bdry.insert(bdry.end(), rightmostlane.begin(), rightmostlane.end());
-    /*std::vector<std::vector<Point>> leftmostlane2;
+    bdry.push_back(bdry[0]);
+    /*std::vector<std::vector<PointDB>> leftmostlane2;
     leftmostlane2.push_back(leftmostlane);
     savetofile(leftmostlane2);*/
 
@@ -458,19 +446,6 @@ int main()
 
     /*  -------------------done preprocessing start generate voronoi---------------------------*/
     vorcon vc;
-
-    jcv_clipping_polygon polygon;
-    jcv_clipper* clipper = 0;
-
-    polygon.num_points = bdry.size();
-    polygon.points = convert_to_jcv_points(bdry);
-
-    jcv_clipper polygonclipper;
-    polygonclipper.test_fn = jcv_clip_polygon_test_point;
-    polygonclipper.clip_fn = jcv_clip_polygon_clip_edge;
-    polygonclipper.fill_fn = jcv_clip_polygon_fill_gaps;
-    polygonclipper.ctx = &polygon;
-    clipper = &polygonclipper;
 
     convert_to_jcv_points(lane_lines, vc);
 
@@ -480,12 +455,15 @@ int main()
     jcv_diagram_generate(vc.num_points, vc.points, &vc.rect, 0, &vc.diagram);
 
     /* xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx */
+    auto diff = calc_diff(bounding_box);
+#ifdef OUTPIC
     int width = 512;
     int height = 512;
-    int count = 200;
-    int numrelaxations = 0;
-    const char* inputfile = 0;
-    const char* clipfile = 0; // a file with clipping points
+#else
+    int width = diff.x;
+    int height = diff.y;
+#endif // 
+
     const char* outputfile = "example.png";
 
     size_t imagesize = (size_t)(width * height * 3);
@@ -496,9 +474,7 @@ int main()
     dimensions.x = (jcv_real)width;
     dimensions.y = (jcv_real)height;
 
-    unsigned char color_pt[] = { 255, 64, 64 };
-    unsigned char color_line[] = { 220, 220, 220 };
-    unsigned char color_delauney[] = { 64, 64, 255 };
+    unsigned char color_pt[] = { 255, 255, 255 };
 
     unsigned char color_edge[3];
     unsigned char basecolor = 120;
@@ -506,6 +482,7 @@ int main()
     // If all you need are the edges
     const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
     int edgecount = 1;
+    std::vector<std::pair<jcv_point, jcv_point>> linestrings;
     while (edge)
     {
         color_edge[0] = rand() % 255;
@@ -515,21 +492,47 @@ int main()
 
         jcv_point p0 = remap(&edge->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
         jcv_point p1 = remap(&edge->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
-        draw_line((int)p0.x, (int)p0.y, (int)p1.x, (int)p1.y, image, width, height, 3, color_edge);
+        draw_line((double)p0.x, (double)p0.y, (double)p1.x, (double)p1.y, image, width, height, 3, color_edge);
+
+        /* --------- get edges --------- */
+#ifndef OUTPIC
+        std::cout << "p0: " << p0.x << ", " << p0.y << "; p1: " << p1.x << ", " << p1.y << std::endl;
+#endif
+        linestrings.push_back(make_pair(p0, p1));
+        /* ------- end get edge ---------*/
+
         edge = jcv_diagram_get_next_edge(edge);
         edgecount++;
     }
     std::cout << "edgecount: " << edgecount << std::endl;
 
-    printf("Done.\n"); // rendering
-
     jcv_diagram_free(&vc.diagram);
 
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /* -------------- image ------------------ */
     // Plot the sites ---- lane points
-    for (int i = 0; i < vc.num_points; ++i)
+    for (uint32_t i = 0; i < vc.num_points; ++i)
     {
         jcv_point p = remap(&vc.points[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
-        plot((int)p.x, (int)p.y, image, width, height, 3, color_pt);
+        plot((double)p.x, (double)p.y, image, width, height, 3, color_pt);
     }
 
     //free(clippoints);
@@ -548,7 +551,6 @@ int main()
 
     char path[512];
     sprintf_s(path, "%s", outputfile);
-    printf("Writing %s\n", path);
 
     stbi_write_png(path, width, height, 3, image, stride);
     printf("Done.\n");
@@ -559,3 +561,21 @@ int main()
     return 0;
 
 }
+
+
+// Example usage
+//int main() {
+//    std::vector<std::pair<jcv_point, jcv_point>> centerlines = {
+//        {{0, 0}, {10, 10}}, {{20, 20}, {30, 30}}, {{5, 5}, {15, 15}}
+//    };
+//    std::vector<jcv_point> boundary = { {0, 0}, {10, 0}, {10, 10}, {0, 10}, {0, 0} };
+//
+//    auto filteredCenterlines = filterCenterlines(centerlines, boundary);
+//
+//    for (const auto& line : filteredCenterlines) {
+//        std::cout << "Filtered line: ((" << line.first.x << ", " << line.first.y << "), (" << line.second.x << ", " << line.second.y << "))\n";
+//    }
+//
+//    return 0;
+//}
+

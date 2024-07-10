@@ -22,11 +22,11 @@ typedef struct Points_
     int32_t clusterID;  // clustered ID
     Points_() : x(0), y(0), clusterID(-1) {}
     Points_(double x, double y) : x(x), y(y), clusterID(-1) {}
-}Point;
+}PointDB;
 
 class DBSCAN {
 public:
-    DBSCAN(int32_t minPts, double eps, vector<Point> points) {
+    DBSCAN(int32_t minPts, double eps, vector<PointDB> points) {
         m_minPoints = minPts;
         m_epsilon = eps;
         m_points = points;
@@ -36,9 +36,9 @@ public:
     ~DBSCAN() {}
 
     int32_t run();
-    vector<int32_t> calculateCluster(Point point);
-    int32_t expandCluster(Point point, int32_t clusterID);
-    inline double calculateDistance(const Point& pointCore, const Point& pointTarget);
+    vector<int32_t> calculateCluster(PointDB point);
+    int32_t expandCluster(PointDB point, int32_t clusterID);
+    inline double calculateDistance(const PointDB& pointCore, const PointDB& pointTarget);
 
     int32_t getTotalPointSize() { return m_pointSize; }
     int32_t getMinimumClusterSize() { return m_minPoints; }
@@ -46,7 +46,7 @@ public:
     int32_t getClusterCount() { return m_clusterCount - 1; }
 
 public:
-    vector<Point> m_points;
+    vector<PointDB> m_points;
 
 private:
     int32_t m_pointSize;

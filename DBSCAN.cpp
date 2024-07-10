@@ -3,7 +3,7 @@
 int32_t DBSCAN::run()
 {
     int32_t clusterID = 1;
-    vector<Point>::iterator iter;
+    vector<PointDB>::iterator iter;
     for (iter = m_points.begin(); iter != m_points.end(); ++iter)
     {
         if (iter->clusterID == UNCLASSIFIED)
@@ -19,7 +19,7 @@ int32_t DBSCAN::run()
     return 0;
 }
 
-int32_t DBSCAN::expandCluster(Point point, int32_t clusterID)
+int32_t DBSCAN::expandCluster(PointDB point, int32_t clusterID)
 {
     vector<int32_t> clusterSeeds = calculateCluster(point);
 
@@ -69,10 +69,10 @@ int32_t DBSCAN::expandCluster(Point point, int32_t clusterID)
     }
 }
 
-vector<int32_t> DBSCAN::calculateCluster(Point point)
+vector<int32_t> DBSCAN::calculateCluster(PointDB point)
 {
     int32_t index = 0;
-    vector<Point>::iterator iter;
+    vector<PointDB>::iterator iter;
     vector<int32_t> clusterIndex;
     for (iter = m_points.begin(); iter != m_points.end(); ++iter)
     {
@@ -85,7 +85,7 @@ vector<int32_t> DBSCAN::calculateCluster(Point point)
     return clusterIndex;
 }
 
-inline double DBSCAN::calculateDistance(const Point& pointCore, const Point& pointTarget)
+inline double DBSCAN::calculateDistance(const PointDB& pointCore, const PointDB& pointTarget)
 {
     return pow(pointCore.x - pointTarget.x, 2) + pow(pointCore.y - pointTarget.y, 2);
 }
