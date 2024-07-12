@@ -1,4 +1,3 @@
-#pragma comment(lib, "geos.lib")
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -10,6 +9,7 @@
 #include <cmath>
 #include <numeric>
 #include <cstdlib>
+#include <unordered_set>
 
 #define JC_VORONOI_IMPLEMENTATION
 #define JC_VORONOI_CLIP_IMPLEMENTATION
@@ -21,9 +21,26 @@
 #include "stb_image_write.h"
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_interp.h>
-//#include <geos.h>
-//#include "strtree.hpp"
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/box.hpp>
+#include <boost/geometry/geometries/linestring.hpp>
+#include <boost/geometry/index/predicates.hpp>
+#include <boost/geometry/index/adaptors/query.hpp>
+#include <boost/geometry/core/cs.hpp>
+#include <boost/geometry/arithmetic/arithmetic.hpp>
+#include <boost/geometry/algorithms/within.hpp>
+#include <boost/geometry/algorithms/intersects.hpp>
+#include <boost/geometry/algorithms/envelope.hpp>
+#include <boost/geometry/algorithms/intersection.hpp>
+#include <boost/geometry/index/rtree.hpp>
+//#include <boost/timer/timer.hpp>
 
+typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> bst_point;
+typedef boost::geometry::model::segment<bst_point> bst_segment;
+typedef boost::geometry::model::linestring<bst_point> bst_linestring;
+typedef boost::geometry::model::polygon<bst_point> bst_polygon;
+typedef std::pair<bst_segment, uint32_t> bst_value;
 
 typedef struct VoronoiContext_ {
     uint32_t num_points;
@@ -133,10 +150,15 @@ static inline jcv_point remap(const jcv_point* pt, const jcv_point* min, const j
     return p;
 }
 
+static inline jcv_point remap(const PointDB* pt, const jcv_point* min, const jcv_point* max, const jcv_point* scale)
+{
+    jcv_point p;
+    p.x = (pt->x - min->x) / (max->x - min->x) * scale->x;
+    p.y = (pt->y - min->y) / (max->y - min->y) * scale->y;
+    return p;
+}
+
 /* ----------------------------------------------------------------------- */
-
-
-
 std::vector<PointDB> readCSV(const std::string& filename) {
     std::vector<PointDB> points;
     std::ifstream file(filename);
@@ -390,6 +412,18 @@ jcv_point calc_diff(std::vector<std::pair<double, double>> bounding) {
     return { width, height };
 }
 
+jcv_point bst_val_to_jcv(const bst_value val, bool zo) {
+    auto line = val.first;
+    if (zo == true) { // p0
+        auto p0 = line.first;
+        return { p0.get<0>(), p0.get<1>() };
+    }
+	else { // p1
+		auto p1 = line.second;
+		return { p1.get<0>(), p1.get<1>() };
+	}
+}
+
 int main()
 {
     std::string filename = "data3.csv";
@@ -423,7 +457,7 @@ int main()
         std::cout << std::endl;
     }*/
 
-    lane_lines = apply_moving_average(lane_lines);
+    //lane_lines = apply_moving_average(lane_lines);
 
     lane_lines = smooth_lines(lane_lines);
 
@@ -479,15 +513,44 @@ int main()
     unsigned char color_edge[3];
     unsigned char basecolor = 120;
     
+
+    const jcv_site* sites = jcv_diagram_get_sites(&vc.diagram);
+    for (int i = 0; i < vc.diagram.numsites; ++i)
+    {
+        const jcv_site* site = &sites[i];
+
+        srand((unsigned int)site->index); // for generating colors for the triangles
+
+        unsigned char color_tri[3];
+        unsigned char basecolor = 120;
+        color_tri[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+        color_tri[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+        color_tri[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+
+        jcv_point s = remap(&site->p, &vc.diagram.min, &vc.diagram.max, &dimensions);
+
+        const jcv_graphedge* e = site->edges;
+        while (e)
+        {
+            jcv_point p0 = remap(&e->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            jcv_point p1 = remap(&e->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+
+            draw_triangle(&s, &p0, &p1, image, width, height, 3, color_tri);
+            e = e->next;
+        }
+    }
+
+
+
     // If all you need are the edges
     const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
     int edgecount = 1;
-    std::vector<std::pair<jcv_point, jcv_point>> linestrings;
+    std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
     while (edge)
     {
-        color_edge[0] = rand() % 255;
-        color_edge[1] = rand() % 255;
-        color_edge[2] = rand() % 255;
+        color_edge[0] = 50;
+        color_edge[1] = 50;
+        color_edge[2] = 255;
 
 
         jcv_point p0 = remap(&edge->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
@@ -498,7 +561,7 @@ int main()
 #ifndef OUTPIC
         std::cout << "p0: " << p0.x << ", " << p0.y << "; p1: " << p1.x << ", " << p1.y << std::endl;
 #endif
-        linestrings.push_back(make_pair(p0, p1));
+        edge_lines.push_back(make_pair(p0, p1));
         /* ------- end get edge ---------*/
 
         edge = jcv_diagram_get_next_edge(edge);
@@ -506,24 +569,105 @@ int main()
     }
     std::cout << "edgecount: " << edgecount << std::endl;
 
-    jcv_diagram_free(&vc.diagram);
+    
 
     
 
+    bst_polygon bdry_poly;
+    std::vector<jcv_point> scaled_bdry;
+    for (size_t i = 0; i < bdry.size(); i++) {
+        // fit to scale
+        auto pt = remap(&bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+        scaled_bdry.push_back(pt);
+		boost::geometry::append(bdry_poly.outer(), bst_point(pt.x, pt.y));
+	}
 
+    std::vector<bst_linestring> road_lines;
+    for (size_t i = 0; i < lane_lines.size(); i++) {
+        bst_linestring lstr;
+        for (size_t j = 0; j < lane_lines[i].size(); j++) {
+            auto pt = remap(&lane_lines[i][j], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            lstr.push_back(bst_point(pt.x, pt.y));
+        }
+        road_lines.push_back(lstr);
+    }
 
+    std::vector<bst_value> line_to_check;
+    for (size_t i = 0; i < edge_lines.size(); i++) {
+        auto pt0 = edge_lines[i].first;
+        auto pt1 = edge_lines[i].second;
+        bst_segment line = { bst_point(pt0.x, pt0.y), bst_point(pt1.x, pt1.y) };
+        bst_value val = make_pair(line, i);
+        line_to_check.push_back(val);
+	}
 
+    boost::geometry::index::rtree<bst_value, boost::geometry::index::rstar<16>> r_tree(line_to_check.begin(), line_to_check.end());
 
+    std::vector<std::vector<bst_value>> to_delete;
+    for (size_t i = 0; i < road_lines.size(); i++) {
+        auto line = road_lines[i];
+        std::vector<bst_value> to_delete_line;
+        boost::geometry::index::query(r_tree, boost::geometry::index::intersects(line), std::back_inserter(to_delete_line));
+        to_delete.push_back(to_delete_line);
+    }
 
+    for (auto& line : to_delete) {
+        std::cout << "line size: " << line.size() << std::endl;
+    }
 
+    std::vector<bst_value> qry_result;
 
+    boost::geometry::index::query(r_tree, boost::geometry::index::intersects(bdry_poly), std::back_inserter(qry_result));
 
+    std::cout << "qry result size: " << qry_result.size() << std::endl;
 
+    std::vector<uint32_t> qry_idx;
+    for (uint32_t i = 0; i < qry_result.size(); i++) {
+        qry_idx.push_back(qry_result[i].second);
+	}
 
+    std::vector<uint32_t> to_delete_idx;
+    for (size_t i = 0; i < to_delete.size(); i++) {
+		for (size_t j = 0; j < to_delete[i].size(); j++) {
+			to_delete_idx.push_back(to_delete[i][j].second);
+		}
+	}
 
-
-
-
+    std::sort(qry_idx.begin(), qry_idx.end());
+    std::sort(to_delete_idx.begin(), to_delete_idx.end());
+    std::cout << " ------------qry idx---------------" << std::endl;
+    for (auto& i : qry_idx) {
+        std::cout << i << " ";
+    }
+    std::cout << std::endl;
+    std::cout << " ------------to delete idx---------------" << std::endl;
+    for (auto& i : to_delete_idx) {
+		std::cout << i << " ";
+	}
+    std::cout << std::endl;
+    std::unordered_set<uint32_t> to_delete_set(to_delete_idx.begin(), to_delete_idx.end());
+    qry_idx.erase(
+        std::remove_if(qry_idx.begin(), qry_idx.end(), [&to_delete_set](uint32_t i) { 
+            return to_delete_set.find(i) != to_delete_set.end(); 
+        }), 
+        qry_idx.end());
+    
+    std::cout << "qry idx size: " << qry_idx.size() << std::endl;
+    std::cout << " ------------new qry idx---------------" << std::endl;
+    for (auto& i : qry_idx) {
+        std::cout << i << " ";
+    }
+    std::cout << std::endl;
+    
+    for (uint32_t i = 0; i < qry_idx.size(); i++) {
+        jcv_point p0 = bst_val_to_jcv(line_to_check[qry_idx[i]], true);
+        jcv_point p1 = bst_val_to_jcv(line_to_check[qry_idx[i]], false);
+        color_edge[0] = 255;
+        color_edge[1] = 50;
+        color_edge[2] = 50;
+        //std::cout << "p0: " << p0.x << ", " << p0.y << "; p1: " << p1.x << ", " << p1.y << std::endl;
+        draw_line((double)p0.x, (double)p0.y, (double)p1.x, (double)p1.y, image, width, height, 3, color_edge);
+    }
 
 
 
@@ -534,6 +678,19 @@ int main()
         jcv_point p = remap(&vc.points[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
         plot((double)p.x, (double)p.y, image, width, height, 3, color_pt);
     }
+
+    for (uint32_t i = 1; i < scaled_bdry.size(); i++)
+    {
+        auto curr = scaled_bdry[i];
+        auto prev = scaled_bdry[i - 1];
+        draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_pt);
+    }
+
+    /* ------------------------------------------------------------ */
+
+    
+
+    /* ------------------------------------------------------------- */
 
     //free(clippoints);
     /*free(vc.points);
@@ -556,26 +713,11 @@ int main()
     printf("Done.\n");
 
     free(image);
-
+    jcv_diagram_free(&vc.diagram);
 
     return 0;
 
 }
 
 
-// Example usage
-//int main() {
-//    std::vector<std::pair<jcv_point, jcv_point>> centerlines = {
-//        {{0, 0}, {10, 10}}, {{20, 20}, {30, 30}}, {{5, 5}, {15, 15}}
-//    };
-//    std::vector<jcv_point> boundary = { {0, 0}, {10, 0}, {10, 10}, {0, 10}, {0, 0} };
-//
-//    auto filteredCenterlines = filterCenterlines(centerlines, boundary);
-//
-//    for (const auto& line : filteredCenterlines) {
-//        std::cout << "Filtered line: ((" << line.first.x << ", " << line.first.y << "), (" << line.second.x << ", " << line.second.y << "))\n";
-//    }
-//
-//    return 0;
-//}
 
