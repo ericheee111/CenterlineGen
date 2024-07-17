@@ -3,21 +3,18 @@ C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\DBSCAN.h(31,21): 
 C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\jc_voronoi.h(335,23): warning C4244: 'argument': conversion from 'jcv_real' to 'float', possible loss of data
 C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\jc_voronoi.h(1080,22): warning C4244: 'argument': conversion from 'jcv_real' to 'float', possible loss of data
 C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\jc_voronoi_clip.h(71,12): warning C4244: 'argument': conversion from 'jcv_real' to 'float', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(383,21): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(558,71): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(558,57): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(558,43): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(558,29): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(669,71): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(669,57): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(669,43): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(669,29): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(679,36): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(679,23): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(686,47): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(686,39): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(686,31): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(686,23): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(385,21): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(663,97): warning C4267: 'argument': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(683,71): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(683,57): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(683,43): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(683,29): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(693,36): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(693,23): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(700,47): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(700,39): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(700,31): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(700,23): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
 C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\include\utility(276,61): warning C4244: 'initializing': conversion from '_Ty' to '_Ty2', possible loss of data
 C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\include\utility(276,61): warning C4244:         with
 C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\include\utility(276,61): warning C4244:         [
@@ -27,4 +24,5 @@ C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.3380
 C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\include\utility(276,61): warning C4244:         [
 C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\include\utility(276,61): warning C4244:             _Ty2=uint32_t
 C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\include\utility(276,61): warning C4244:         ]
+LINK : warning LNK4098: defaultlib 'LIBCMTD' conflicts with use of other libs; use /NODEFAULTLIB:library
   CenterlineGen.vcxproj -> C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\x64\Debug\CenterlineGen.exe

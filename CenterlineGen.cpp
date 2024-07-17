@@ -35,6 +35,8 @@
 #include <boost/geometry/algorithms/intersection.hpp>
 #include <boost/geometry/index/rtree.hpp>
 //#include <boost/timer/timer.hpp>
+#include <boost/geometry/algorithms/buffer.hpp>
+#include <boost/geometry/geometries/multi_polygon.hpp>
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> bst_point;
 typedef boost::geometry::model::segment<bst_point> bst_segment;
@@ -424,6 +426,41 @@ jcv_point bst_val_to_jcv(const bst_value val, bool zo) {
 	}
 }
 
+std::vector<uint32_t> del_intersect(std::vector<uint32_t> qry_idx, std::vector<uint32_t> to_delete_idx, uint32_t n) {
+    const int BITS_PER_BLOCK = 64;
+    int num_blocks = (n + BITS_PER_BLOCK - 1) / BITS_PER_BLOCK;
+    std::vector<uint64_t> binqry(num_blocks, 0);
+    std::vector<uint64_t> bindel(num_blocks, 0);
+
+    for (int index : to_delete_idx) {
+        int block = index / BITS_PER_BLOCK;
+        int bit = index % BITS_PER_BLOCK;
+        bindel[block] |= (1ULL << bit);
+    }
+
+    for (int index : qry_idx) {
+		int block = index / BITS_PER_BLOCK;
+		int bit = index % BITS_PER_BLOCK;
+		binqry[block] |= (1ULL << bit);
+	}
+
+    std::vector<uint64_t> result(num_blocks, 0);
+    for (int i = 0; i < num_blocks; ++i) {
+        result[i] = binqry[i] ^ bindel[i];
+    }
+
+    std::vector<uint32_t> ret;
+    for (int i = 0; i < num_blocks; ++i) {
+		for (int j = 0; j < BITS_PER_BLOCK; ++j) {
+			if (result[i] & (1ULL << j)) {
+				ret.push_back(i * BITS_PER_BLOCK + j);
+			}
+		}
+	}
+
+    return ret;
+}
+
 int main()
 {
     std::string filename = "data3.csv";
@@ -457,7 +494,7 @@ int main()
         std::cout << std::endl;
     }*/
 
-    //lane_lines = apply_moving_average(lane_lines);
+    lane_lines = apply_moving_average(lane_lines);
 
     lane_lines = smooth_lines(lane_lines);
 
@@ -512,35 +549,6 @@ int main()
 
     unsigned char color_edge[3];
     unsigned char basecolor = 120;
-    
-
-    const jcv_site* sites = jcv_diagram_get_sites(&vc.diagram);
-    for (int i = 0; i < vc.diagram.numsites; ++i)
-    {
-        const jcv_site* site = &sites[i];
-
-        srand((unsigned int)site->index); // for generating colors for the triangles
-
-        unsigned char color_tri[3];
-        unsigned char basecolor = 120;
-        color_tri[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-        color_tri[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-        color_tri[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-
-        jcv_point s = remap(&site->p, &vc.diagram.min, &vc.diagram.max, &dimensions);
-
-        const jcv_graphedge* e = site->edges;
-        while (e)
-        {
-            jcv_point p0 = remap(&e->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
-            jcv_point p1 = remap(&e->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
-
-            draw_triangle(&s, &p0, &p1, image, width, height, 3, color_tri);
-            e = e->next;
-        }
-    }
-
-
 
     // If all you need are the edges
     const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
@@ -555,7 +563,7 @@ int main()
 
         jcv_point p0 = remap(&edge->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
         jcv_point p1 = remap(&edge->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
-        draw_line((double)p0.x, (double)p0.y, (double)p1.x, (double)p1.y, image, width, height, 3, color_edge);
+        //draw_line((double)p0.x, (double)p0.y, (double)p1.x, (double)p1.y, image, width, height, 3, color_edge);
 
         /* --------- get edges --------- */
 #ifndef OUTPIC
@@ -607,19 +615,18 @@ int main()
     for (size_t i = 0; i < road_lines.size(); i++) {
         auto line = road_lines[i];
         std::vector<bst_value> to_delete_line;
+        /*boost::geometry::model::multi_polygon<bst_polygon> buffer;
+        boost::geometry::buffer(line, buffer, (double)1.0);*/
+
         boost::geometry::index::query(r_tree, boost::geometry::index::intersects(line), std::back_inserter(to_delete_line));
         to_delete.push_back(to_delete_line);
-    }
-
-    for (auto& line : to_delete) {
-        std::cout << "line size: " << line.size() << std::endl;
     }
 
     std::vector<bst_value> qry_result;
 
     boost::geometry::index::query(r_tree, boost::geometry::index::intersects(bdry_poly), std::back_inserter(qry_result));
 
-    std::cout << "qry result size: " << qry_result.size() << std::endl;
+    //std::cout << "qry result size: " << qry_result.size() << std::endl;
 
     std::vector<uint32_t> qry_idx;
     for (uint32_t i = 0; i < qry_result.size(); i++) {
@@ -633,7 +640,7 @@ int main()
 		}
 	}
 
-    std::sort(qry_idx.begin(), qry_idx.end());
+    /*std::sort(qry_idx.begin(), qry_idx.end());
     std::sort(to_delete_idx.begin(), to_delete_idx.end());
     std::cout << " ------------qry idx---------------" << std::endl;
     for (auto& i : qry_idx) {
@@ -644,24 +651,31 @@ int main()
     for (auto& i : to_delete_idx) {
 		std::cout << i << " ";
 	}
-    std::cout << std::endl;
-    std::unordered_set<uint32_t> to_delete_set(to_delete_idx.begin(), to_delete_idx.end());
+    std::cout << std::endl;*/
+    /*std::unordered_set<uint32_t> to_delete_set(to_delete_idx.begin(), to_delete_idx.end());
     qry_idx.erase(
         std::remove_if(qry_idx.begin(), qry_idx.end(), [&to_delete_set](uint32_t i) { 
             return to_delete_set.find(i) != to_delete_set.end(); 
         }), 
-        qry_idx.end());
+        qry_idx.end());*/
+
+
+    std::vector<uint32_t> to_keep_idx = del_intersect(qry_idx, to_delete_idx, line_to_check.size());
+
+
+
+
     
-    std::cout << "qry idx size: " << qry_idx.size() << std::endl;
+    /*std::cout << "qry idx size: " << qry_idx.size() << std::endl;
     std::cout << " ------------new qry idx---------------" << std::endl;
     for (auto& i : qry_idx) {
         std::cout << i << " ";
     }
-    std::cout << std::endl;
+    std::cout << std::endl;*/
     
-    for (uint32_t i = 0; i < qry_idx.size(); i++) {
-        jcv_point p0 = bst_val_to_jcv(line_to_check[qry_idx[i]], true);
-        jcv_point p1 = bst_val_to_jcv(line_to_check[qry_idx[i]], false);
+    for (uint32_t i = 0; i < to_keep_idx.size(); i++) {
+        jcv_point p0 = bst_val_to_jcv(line_to_check[to_keep_idx[i]], true);
+        jcv_point p1 = bst_val_to_jcv(line_to_check[to_keep_idx[i]], false);
         color_edge[0] = 255;
         color_edge[1] = 50;
         color_edge[2] = 50;
