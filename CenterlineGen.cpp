@@ -38,11 +38,29 @@
 #include <boost/geometry/algorithms/buffer.hpp>
 #include <boost/geometry/geometries/multi_polygon.hpp>
 
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Alpha_shape_2.h>
+#include <CGAL/Alpha_shape_vertex_base_2.h>
+#include <CGAL/Alpha_shape_face_base_2.h>
+#include <CGAL/Delaunay_triangulation_2.h>
+#include <CGAL/algorithm.h>
+
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> bst_point;
 typedef boost::geometry::model::segment<bst_point> bst_segment;
 typedef boost::geometry::model::linestring<bst_point> bst_linestring;
 typedef boost::geometry::model::polygon<bst_point> bst_polygon;
 typedef std::pair<bst_segment, uint32_t> bst_value;
+
+typedef CGAL::Exact_predicates_inexact_constructions_kernel  K;
+typedef K::FT                                                FT;
+typedef K::Point_2                                           CGAL_Point;
+typedef K::Segment_2                                         CGAL_Segment;
+typedef CGAL::Alpha_shape_vertex_base_2<K>                   Vb;
+typedef CGAL::Alpha_shape_face_base_2<K>                     Fb;
+typedef CGAL::Triangulation_data_structure_2<Vb, Fb>          Tds;
+typedef CGAL::Delaunay_triangulation_2<K, Tds>                Triangulation_2;
+typedef CGAL::Alpha_shape_2<Triangulation_2>                 Alpha_shape_2;
+typedef Alpha_shape_2::Alpha_shape_edges_iterator            Alpha_shape_edges_iterator;
 
 typedef struct VoronoiContext_ {
     uint32_t num_points;
@@ -157,6 +175,14 @@ static inline jcv_point remap(const PointDB* pt, const jcv_point* min, const jcv
     jcv_point p;
     p.x = (pt->x - min->x) / (max->x - min->x) * scale->x;
     p.y = (pt->y - min->y) / (max->y - min->y) * scale->y;
+    return p;
+}
+
+static inline jcv_point remap(const CGAL_Point* pt, const jcv_point* min, const jcv_point* max, const jcv_point* scale)
+{
+    jcv_point p;
+    p.x = (pt->x() - min->x) / (max->x - min->x) * scale->x;
+    p.y = (pt->y() - min->y) / (max->y - min->y) * scale->y;
     return p;
 }
 
@@ -368,22 +394,26 @@ std::vector<std::vector<PointDB>> smooth_lines(const std::vector<std::vector<Poi
     return smoothed_lines;
 }
 
-void convert_to_jcv_points(const std::vector<std::vector<PointDB>>& lane_lines, vorcon& vc) {
+std::vector<CGAL_Point> convert_to_jcv_points(const std::vector<std::vector<PointDB>>& lane_lines, vorcon& vc) {
 	size_t num_points = 0;
 	for (const auto& line : lane_lines) {
 		num_points += line.size();
 	}
+
+    std::vector<CGAL_Point> cgalpoints;
 
 	jcv_point* points = new jcv_point[num_points];
 	size_t idx = 0;
 	for (const auto& line : lane_lines) {
 		for (const auto& point : line) {
 			points[idx] = { point.x, point.y };
+            cgalpoints.push_back(CGAL_Point(point.x, point.y));
             idx++;
 		}
 	}
     vc.num_points = num_points;
     vc.points = points;
+    return cgalpoints;
 }
 
 jcv_point* convert_to_jcv_points(const std::vector<PointDB>& lane) {
@@ -446,7 +476,7 @@ std::vector<uint32_t> del_intersect(std::vector<uint32_t> qry_idx, std::vector<u
 
     std::vector<uint64_t> result(num_blocks, 0);
     for (int i = 0; i < num_blocks; ++i) {
-        result[i] = binqry[i] ^ bindel[i];
+        result[i] = binqry[i] & (~bindel[i]);
     }
 
     std::vector<uint32_t> ret;
@@ -461,9 +491,16 @@ std::vector<uint32_t> del_intersect(std::vector<uint32_t> qry_idx, std::vector<u
     return ret;
 }
 
+template <class OutputIterator>
+void alpha_edges(const Alpha_shape_2& A, OutputIterator out) {
+    for (Alpha_shape_edges_iterator it = A.alpha_shape_edges_begin(); it != A.alpha_shape_edges_end(); ++it) {
+        *out++ = A.segment(*it);
+    }
+}
+
 int main()
 {
-    std::string filename = "data3.csv";
+    std::string filename = "data5.csv";
     std::vector<PointDB> lane = readCSV(filename);
 
     std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lane);
@@ -494,9 +531,9 @@ int main()
         std::cout << std::endl;
     }*/
 
-    lane_lines = apply_moving_average(lane_lines);
+    //lane_lines = apply_moving_average(lane_lines);
 
-    lane_lines = smooth_lines(lane_lines);
+    //lane_lines = smooth_lines(lane_lines);
 
     std::vector<std::pair<int, PointDB>> closest_points = find_closest_to_corner(bounding_box, lane_lines);
 
@@ -518,7 +555,18 @@ int main()
     /*  -------------------done preprocessing start generate voronoi---------------------------*/
     vorcon vc;
 
-    convert_to_jcv_points(lane_lines, vc);
+    std::vector<CGAL_Point> points = convert_to_jcv_points(lane_lines, vc);
+
+    Alpha_shape_2 A(points.begin(), points.end(),
+        FT(10), // 11 - 50
+        Alpha_shape_2::GENERAL);
+
+    std::vector<CGAL_Segment> segs;
+    alpha_edges(A, std::back_inserter(segs));
+
+    std::cout << "Alpha Shape computed" << std::endl;
+    std::cout << segs.size() << " alpha shape edges" << std::endl;
+    std::cout << "Optimal alpha: " << *A.find_optimal_alpha(1) << std::endl;
 
     vc.rect = { bounding_box[0].first - 1, bounding_box[0].second - 1, bounding_box[1].first + 1, bounding_box[1].second + 1 };
     memset(&vc.diagram, 0, sizeof(jcv_diagram));
@@ -575,7 +623,7 @@ int main()
         edge = jcv_diagram_get_next_edge(edge);
         edgecount++;
     }
-    std::cout << "edgecount: " << edgecount << std::endl;
+    //std::cout << "edgecount: " << edgecount << std::endl;
 
     
 
@@ -611,14 +659,25 @@ int main()
 
     boost::geometry::index::rtree<bst_value, boost::geometry::index::rstar<16>> r_tree(line_to_check.begin(), line_to_check.end());
 
+    const double buffer_distance = 1.0 / vc.diagram.max.x * (double)width;
+    const int points_per_circle = 36;
+
+    boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(buffer_distance);
+    boost::geometry::strategy::buffer::join_round join_strategy(points_per_circle);
+    boost::geometry::strategy::buffer::end_round end_strategy(points_per_circle);
+    boost::geometry::strategy::buffer::point_circle circle_strategy(points_per_circle);
+    boost::geometry::strategy::buffer::side_straight side_strategy;
+
     std::vector<std::vector<bst_value>> to_delete;
     for (size_t i = 0; i < road_lines.size(); i++) {
+
         auto line = road_lines[i];
         std::vector<bst_value> to_delete_line;
-        /*boost::geometry::model::multi_polygon<bst_polygon> buffer;
-        boost::geometry::buffer(line, buffer, (double)1.0);*/
+        boost::geometry::model::multi_polygon<bst_polygon> buffer;
+        boost::geometry::buffer(line, buffer, distance_strategy, side_strategy,
+            join_strategy, end_strategy, circle_strategy);
 
-        boost::geometry::index::query(r_tree, boost::geometry::index::intersects(line), std::back_inserter(to_delete_line));
+        boost::geometry::index::query(r_tree, boost::geometry::index::intersects(buffer), std::back_inserter(to_delete_line));
         to_delete.push_back(to_delete_line);
     }
 
@@ -695,9 +754,15 @@ int main()
 
     for (uint32_t i = 1; i < scaled_bdry.size(); i++)
     {
-        auto curr = scaled_bdry[i];
-        auto prev = scaled_bdry[i - 1];
-        draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_pt);
+        /*auto curr = scaled_bdry[i];
+        auto prev = scaled_bdry[i - 1];*/
+        //draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_pt);
+    }
+
+    for (uint32_t i = 0; i < segs.size(); i++) {
+        auto p0 = remap(&segs[i].min(), &vc.diagram.min, &vc.diagram.max, &dimensions);
+        auto p1 = remap(&segs[i].max(), &vc.diagram.min, &vc.diagram.max, &dimensions);
+        draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color_pt);
     }
 
     /* ------------------------------------------------------------ */

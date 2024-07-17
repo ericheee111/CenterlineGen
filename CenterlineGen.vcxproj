@@ -70,16 +70,34 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>C:\vcpkg\installed\x64-windows\include;C:\Program Files\Boost\boost_1_85_0;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\Boost\boost_1_85_0;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>C:\vcpkg\installed\x64-windows\include;C:\Program Files\Boost\boost_1_85_0;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\Boost\boost_1_85_0;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>C:\vcpkg\installed\x64-windows\include;C:\Program Files\Boost\boost_1_85_0;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\Boost\boost_1_85_0;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>C:\vcpkg\installed\x64-windows\include;C:\Program Files\Boost\boost_1_85_0;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\Boost\boost_1_85_0;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include;C:\Program Files\Boost\boost_1_85_0;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\Boost\boost_1_85_0\bin;C:\Program Files\Boost\boost_1_85_0\bin\x64\lib\cmake;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -90,12 +108,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include;C:\Program Files\Boost\boost_1_85_0;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\Boost\boost_1_85_0\bin;C:\Program Files\Boost\boost_1_85_0\bin\x64\lib\cmake;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -104,12 +124,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\geos-3.12.2\include\geos;C:\geos-3.12.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include;C:\Program Files\Boost\boost_1_85_0;C:\geos-3.12.2\include\geos;C:\geos-3.12.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\geos-3.12.2\_build_vs2022x64\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\Boost\boost_1_85_0\bin;C:\Program Files\Boost\boost_1_85_0\bin\x64\lib\cmake;C:\geos-3.12.2\_build_vs2022x64\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>C:\geos-3.12.2\_build_vs2022x64\lib\Release\geos.lib;C:\geos-3.12.2\_build_vs2022x64\lib\Release\geos_c.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -121,14 +141,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\geos-3.12.2\include\geos;C:\geos-3.12.2\include;C:\Program Files\Boost\boost_1_85_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include;C:\Program Files\Boost\boost_1_85_0;C:\geos-3.12.2\include\geos;C:\geos-3.12.2\include;C:\Program Files\Boost\boost_1_85_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\geos-3.12.2\_build_vs2022x64\lib\Release;C:\Program Files\Boost\boost_1_85_0\bin\x64\lib\cmake;C:\Program Files\Boost\boost_1_85_0\bin\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\Boost\boost_1_85_0\bin;C:\Program Files\Boost\boost_1_85_0\bin\x64\lib\cmake;C:\geos-3.12.2\_build_vs2022x64\lib\Release;C:\Program Files\Boost\boost_1_85_0\bin\x64\lib\cmake;C:\Program Files\Boost\boost_1_85_0\bin\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>C:\geos-3.12.2\_build_vs2022x64\lib\Release\geos.lib;C:\geos-3.12.2\_build_vs2022x64\lib\Release\geos_c.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -151,18 +171,19 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="data3.csv" />
+    <None Include="data5.csv" />
+    <None Include="data6.csv" />
+    <None Include="data7.csv" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\gsl-msvc-x64.2.4.0.8788\build\native\gsl-msvc-x64.targets" Condition="Exists('..\packages\gsl-msvc-x64.2.4.0.8788\build\native\gsl-msvc-x64.targets')" />
-    <Import Project="..\packages\boost.1.85.0\build\boost.targets" Condition="Exists('..\packages\boost.1.85.0\build\boost.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\gsl-msvc-x64.2.4.0.8788\build\native\gsl-msvc-x64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\gsl-msvc-x64.2.4.0.8788\build\native\gsl-msvc-x64.targets'))" />
-    <Error Condition="!Exists('..\packages\boost.1.85.0\build\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\boost.1.85.0\build\boost.targets'))" />
   </Target>
 </Project>
