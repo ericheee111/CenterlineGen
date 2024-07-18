@@ -4,7 +4,8 @@
 #include <sstream>
 #include <vector>
 #include <limits>
-#include <map>
+#include <unordered_map>
+#include <stdexcept>
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -498,9 +499,36 @@ void alpha_edges(const Alpha_shape_2& A, OutputIterator out) {
     }
 }
 
+std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segments) {
+    std::map<jcv_point, jcv_point> point_map;
+
+    // Map sources to targets
+    for (const auto& segment : segments) {
+        jcv_point source = { segment.source().x(), segment.source().y() };
+        jcv_point target = { segment.target().x(), segment.target().y() };
+        point_map[source] = target;
+    }
+
+    // Start from the first segment's source
+    std::vector<jcv_point> path;
+    jcv_point start = { segments.front().source().x(), segments.front().source().y() };
+    jcv_point current = start;
+    path.push_back(current);
+
+    // Construct the path
+    do {
+        current = point_map.at(current);
+        path.push_back(current);
+    } while (current.x != start.x && current.y != start.y);
+
+    path.push_back(start); // Close the path
+
+    return path;
+}
+
 int main()
 {
-    std::string filename = "data5.csv";
+    std::string filename = "data9.csv";
     std::vector<PointDB> lane = readCSV(filename);
 
     std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lane);
@@ -558,11 +586,12 @@ int main()
     std::vector<CGAL_Point> points = convert_to_jcv_points(lane_lines, vc);
 
     Alpha_shape_2 A(points.begin(), points.end(),
-        FT(10), // 11 - 50
+        FT(30), // 11 - 50+
         Alpha_shape_2::GENERAL);
 
     std::vector<CGAL_Segment> segs;
     alpha_edges(A, std::back_inserter(segs));
+    auto cgal_bdry = segments_to_path(segs);
 
     std::cout << "Alpha Shape computed" << std::endl;
     std::cout << segs.size() << " alpha shape edges" << std::endl;
@@ -631,12 +660,19 @@ int main()
 
     bst_polygon bdry_poly;
     std::vector<jcv_point> scaled_bdry;
-    for (size_t i = 0; i < bdry.size(); i++) {
+ //   for (size_t i = 0; i < bdry.size(); i++) {
+ //       // fit to scale
+ //       auto pt = remap(&bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+ //       scaled_bdry.push_back(pt);
+	//	boost::geometry::append(bdry_poly.outer(), bst_point(pt.x, pt.y));
+	//}
+
+    for (size_t i = 0; i < cgal_bdry.size(); i++) {
         // fit to scale
-        auto pt = remap(&bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+        auto pt = remap(&cgal_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
         scaled_bdry.push_back(pt);
-		boost::geometry::append(bdry_poly.outer(), bst_point(pt.x, pt.y));
-	}
+        boost::geometry::append(bdry_poly.outer(), bst_point(pt.x, pt.y));
+    }
 
     std::vector<bst_linestring> road_lines;
     for (size_t i = 0; i < lane_lines.size(); i++) {
@@ -754,16 +790,26 @@ int main()
 
     for (uint32_t i = 1; i < scaled_bdry.size(); i++)
     {
-        /*auto curr = scaled_bdry[i];
-        auto prev = scaled_bdry[i - 1];*/
-        //draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_pt);
+        auto curr = scaled_bdry[i];
+        auto prev = scaled_bdry[i - 1];
+        draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_pt);
     }
 
-    for (uint32_t i = 0; i < segs.size(); i++) {
+    
+
+    /*for (uint32_t i = 1; i < cgal_bdry.size(); i++)
+    {
+        auto curr = remap(&cgal_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+        auto prev = remap(&cgal_bdry[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+        draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_pt);
+    }*/
+
+    /*for (uint32_t i = 0; i < segs.size(); i++) {
         auto p0 = remap(&segs[i].min(), &vc.diagram.min, &vc.diagram.max, &dimensions);
         auto p1 = remap(&segs[i].max(), &vc.diagram.min, &vc.diagram.max, &dimensions);
+        std::cout << "p0: " << p0.x << ", " << p0.y << "; p1: " << p1.x << ", " << p1.y << std::endl;
         draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color_pt);
-    }
+    }*/
 
     /* ------------------------------------------------------------ */
 

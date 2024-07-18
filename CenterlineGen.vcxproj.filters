@@ -58,5 +58,9 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="packages.config" />
+    <None Include="data5.csv" />
+    <None Include="data6.csv" />
+    <None Include="data7.csv" />
+    <None Include="data9.csv" />
   </ItemGroup>
 </Project>
