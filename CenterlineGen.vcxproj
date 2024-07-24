@@ -156,12 +156,14 @@
     <ClCompile Include="CenterlineGen.cpp" />
     <ClCompile Include="DBSCAN.cpp" />
     <ClCompile Include="stb_wrapper.c" />
+    <ClCompile Include="testPolynomialRegression.cpp" />
     <ClCompile Include="voronoi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DBSCAN.h" />
     <ClInclude Include="jc_voronoi.h" />
     <ClInclude Include="jc_voronoi_clip.h" />
+    <ClInclude Include="PolynomialRegression.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="voronoi.h" />

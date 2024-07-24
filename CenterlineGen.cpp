@@ -20,6 +20,9 @@
 #include "jc_voronoi.h"
 #include "jc_voronoi_clip.h"
 #include "stb_image_write.h"
+
+#include "PolynomialRegression.h"
+
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_interp.h>
 #include <boost/geometry.hpp>
@@ -394,6 +397,39 @@ std::vector<std::vector<PointDB>> smooth_lines(const std::vector<std::vector<Poi
 
     return smoothed_lines;
 }
+
+//double evaluatePolynomial(const std::vector<double>& coeffs, double x) {
+//    double result = 0.0;
+//    double power = 1.0;
+//    for (const auto& coeff : coeffs) {
+//        result += coeff * power;
+//        power *= x;
+//    }
+//    return result;
+//}
+//
+//std::vector<PointDB> poly_regression(const std::vector<PointDB>& line) {
+//    std::vector<double> x, y;
+//    for (const auto& point : line) {
+//		x.push_back(point.x);
+//		y.push_back(point.y);
+//	}
+//    PolynomialRegression<double> poly;
+//    std::vector<double> fittedCoeffs;
+//    if (poly.fitIt(x, y, 4, fittedCoeffs)) {
+//
+//    }
+//}
+//
+//std::vector<std::vector<PointDB>> poly_regressions(const std::vector<std::vector<PointDB>>& lines) {
+//    std::vector<std::vector<PointDB>> smoothed_lines;
+//
+//    for (const auto& line : lines) {
+//        smoothed_lines.push_back(poly_regression(line));
+//    }
+//
+//    return smoothed_lines;
+//}
 
 std::vector<CGAL_Point> convert_to_jcv_points(const std::vector<std::vector<PointDB>>& lane_lines, vorcon& vc) {
 	size_t num_points = 0;
