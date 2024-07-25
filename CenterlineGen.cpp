@@ -48,6 +48,8 @@
 #include <CGAL/Alpha_shape_face_base_2.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/algorithm.h>
+#include <CGAL/convex_hull_2.h>
+
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> bst_point;
 typedef boost::geometry::model::segment<bst_point> bst_segment;
@@ -74,6 +76,67 @@ typedef struct VoronoiContext_ {
     jcv_clipper clipper;
     jcv_clipper* clipper_ptr;
 } vorcon;
+
+std::map<long long, std::vector<std::vector<PointDB>>> readActualCSV(const std::string& filename) {
+    std::cout << "read file" << std::endl;
+    std::ifstream file(filename);
+    std::map<long long, std::vector<std::vector<PointDB>>> data;
+
+    if (!file.is_open()) {
+        std::cerr << "Unable to open file" << std::endl;
+        return data;
+    }
+
+    std::string line;
+    std::getline(file, line); // Skip the header line
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string cell;
+
+        long long timestamp;
+        std::vector<std::vector<PointDB>> lanes;
+
+        try {
+            // Read timestamp
+            if (!std::getline(ss, cell, ',')) throw std::invalid_argument("Missing timestamp");
+            timestamp = std::stoll(cell);
+            if (!std::getline(ss, cell, ',')) throw std::invalid_argument("Missing lane number");
+            int laneNumber = std::stoi(cell);
+
+            // Read lane coordinates
+            while (std::getline(ss, cell, ',')) {
+                std::vector<PointDB> lane;
+
+                do {
+                    PointDB coordinate;
+
+                    // Read x coordinate
+                    coordinate.x = std::stod(cell);
+                    coordinate.clusterID = laneNumber;
+
+                    // Check if next cell is available for y coordinate
+                    if (!std::getline(ss, cell, ',')) break;
+                    coordinate.y = std::stod(cell);
+
+                    lane.push_back(coordinate);
+                } while (std::getline(ss, cell, ','));
+
+                lanes.push_back(lane);
+            }
+            data[timestamp].insert(data[timestamp].end(), lanes.begin(), lanes.end());
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error parsing line: " << line << std::endl;
+            std::cerr << "Exception: " << e.what() << std::endl;
+            // Optionally, continue processing other lines or stop here
+            continue;
+        }
+    }
+
+    file.close();
+    return data;
+}
 
 /* ----------------------------------------------------------------------- */
 static void plot(int x, int y, unsigned char* image, int width, int height, int nchannels, unsigned char* color)
@@ -239,6 +302,32 @@ std::vector<std::pair<double, double>> findBoundingBox(const std::vector<PointDB
         if (y < minY) minY = y;
         if (y > maxY) maxY = y;
     }
+
+    // Return the bounding box as a vector of pairs
+    return { {minX, minY}, {maxX, maxY} };
+}
+
+std::vector<std::pair<double, double>> findBoundingBox(const std::vector<std::vector<PointDB>>& lanes) {
+    // Initialize min and max values
+    double minX = std::numeric_limits<double>::max();
+    double maxX = std::numeric_limits<double>::min();
+    double minY = std::numeric_limits<double>::max();
+    double maxY = std::numeric_limits<double>::min();
+
+    // Iterate through each point
+    for (const auto& points : lanes) {
+        for (const auto& point : points) {
+            double x = point.x;
+            double y = point.y;
+
+            // Update min and max values
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }
+    }
+    
 
     // Return the bounding box as a vector of pairs
     return { {minX, minY}, {maxX, maxY} };
@@ -431,7 +520,7 @@ std::vector<std::vector<PointDB>> smooth_lines(const std::vector<std::vector<Poi
 //    return smoothed_lines;
 //}
 
-std::vector<CGAL_Point> convert_to_jcv_points(const std::vector<std::vector<PointDB>>& lane_lines, vorcon& vc) {
+std::vector<CGAL_Point> convert_to_cgal_points(const std::vector<std::vector<PointDB>>& lane_lines, vorcon& vc) {
 	size_t num_points = 0;
 	for (const auto& line : lane_lines) {
 		num_points += line.size();
@@ -542,6 +631,10 @@ std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segment
     for (const auto& segment : segments) {
         jcv_point source = { segment.source().x(), segment.source().y() };
         jcv_point target = { segment.target().x(), segment.target().y() };
+        std::cout << "s: " << source.x << " " << source.y << "; t: " << target.x << " " << target.y << std::endl;
+        if (point_map.find(source) != point_map.end()) {
+            std::cout << "-------- branch ------: " << point_map[source].x << " " << point_map[source].y << std::endl;
+        }
         point_map[source] = target;
     }
 
@@ -553,6 +646,7 @@ std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segment
 
     // Construct the path
     do {
+        if (point_map.find(current) == point_map.end()) break;
         current = point_map.at(current);
         path.push_back(current);
     } while (current.x != start.x && current.y != start.y);
@@ -562,7 +656,7 @@ std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segment
     return path;
 }
 
-int main()
+void runsampledata()
 {
     std::string filename = "data9.csv";
     std::vector<PointDB> lane = readCSV(filename);
@@ -619,7 +713,7 @@ int main()
     /*  -------------------done preprocessing start generate voronoi---------------------------*/
     vorcon vc;
 
-    std::vector<CGAL_Point> points = convert_to_jcv_points(lane_lines, vc);
+    std::vector<CGAL_Point> points = convert_to_cgal_points(lane_lines, vc);
 
     Alpha_shape_2 A(points.begin(), points.end(),
         FT(30), // 11 - 50+
@@ -629,9 +723,13 @@ int main()
     alpha_edges(A, std::back_inserter(segs));
     auto cgal_bdry = segments_to_path(segs);
 
-    std::cout << "Alpha Shape computed" << std::endl;
+    /*std::vector<CGAL_Point> cgal_bdry;
+
+    CGAL::convex_hull_2(points.begin(), points.end(), std::back_inserter(cgal_bdry));*/
+
+    /*std::cout << "Alpha Shape computed" << std::endl;
     std::cout << segs.size() << " alpha shape edges" << std::endl;
-    std::cout << "Optimal alpha: " << *A.find_optimal_alpha(1) << std::endl;
+    std::cout << "Optimal alpha: " << *A.find_optimal_alpha(1) << std::endl;*/
 
     vc.rect = { bounding_box[0].first - 1, bounding_box[0].second - 1, bounding_box[1].first + 1, bounding_box[1].second + 1 };
     memset(&vc.diagram, 0, sizeof(jcv_diagram));
@@ -876,9 +974,233 @@ int main()
     free(image);
     jcv_diagram_free(&vc.diagram);
 
-    return 0;
+}
+
+void runactualdata() 
+{
+    std::string filename = "lanes.csv";
+    std::map<long long, std::vector<std::vector<PointDB>>> lanedata = readActualCSV(filename);
+    std::cout << "Number of timestamps: " << lanedata.size() << std::endl;
+    int count = 0;
+    for (const auto& entry : lanedata) {
+        if (count != 66) {
+            count++;
+            continue;
+        }
+        std::cout << "Timestamp: " << entry.first << std::endl;
+        std::vector<std::vector<PointDB>> lanes = entry.second; // all lanes in one timestemp
+		std::cout << "Number of lanes: " << lanes.size() << std::endl;
+        /*for (const auto& lane : entry.second) {
+            std::cout << " ------------------------- :" << std::endl;
+            for (const auto& coord : lane) {
+                std::cout << "    x: " << coord.x << ", y: " << coord.y << "; label: " << coord.clusterID << std::endl;
+            }
+        }*/
+        std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lanes);
+
+
+        vorcon vc;
+        int width = 512;
+        int height = 512;
+        size_t imagesize = (size_t)(width * height * 3);
+        unsigned char* image = (unsigned char*)malloc(imagesize);
+        memset(image, 0, imagesize);
+
+        jcv_point dimensions;
+        dimensions.x = (jcv_real)width;
+        dimensions.y = (jcv_real)height;
+        
+        std::vector<CGAL_Point> points = convert_to_cgal_points(lanes, vc);
+
+        Alpha_shape_2 A(points.begin(), points.end(),
+            FT(40), // 11 - 50+
+            Alpha_shape_2::GENERAL);
+
+        std::vector<CGAL_Segment> segs;
+        alpha_edges(A, std::back_inserter(segs));
+        auto cgal_bdry = segments_to_path(segs);
+        
+
+        vc.rect = { bounding_box[0].first, bounding_box[0].second, bounding_box[1].first, bounding_box[1].second };
+        memset(&vc.diagram, 0, sizeof(jcv_diagram));
+
+        jcv_diagram_generate(vc.num_points, vc.points, &vc.rect, 0, &vc.diagram);
+
+        // If all you need are the edges
+        const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
+        int edgecount = 1;
+        std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
+        unsigned char color_pt[] = { 255, 255, 0 };
+        unsigned char color_edge[3];
+        unsigned char basecolor = 120;
+        while (edge)
+        {
+            color_edge[0] = 50;
+            color_edge[1] = 50;
+            color_edge[2] = 255;
+
+
+            jcv_point p0 = remap(&edge->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            jcv_point p1 = remap(&edge->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            //draw_line((double)p0.x, (double)p0.y, (double)p1.x, (double)p1.y, image, width, height, 3, color_edge);
+
+            edge_lines.push_back(make_pair(p0, p1));
+
+            edge = jcv_diagram_get_next_edge(edge);
+            edgecount++;
+        }
+
+        bst_polygon bdry_poly;
+        std::vector<jcv_point> scaled_bdry;
+
+        //for (size_t i = 0; i < bdry.size(); i++) {
+        //    // fit to scale
+        //    auto pt = remap(&bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+        //    scaled_bdry.push_back(pt);
+        //    boost::geometry::append(bdry_poly.outer(), bst_point(pt.x, pt.y));
+        //}
+
+        for (size_t i = 0; i < cgal_bdry.size(); i++) {
+            // fit to scale
+            auto pt = remap(&cgal_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            scaled_bdry.push_back(pt);
+            boost::geometry::append(bdry_poly.outer(), bst_point(pt.x, pt.y));
+        }
+
+        std::vector<bst_linestring> road_lines;
+        for (size_t i = 0; i < lanes.size(); i++) {
+            bst_linestring lstr;
+            for (size_t j = 0; j < lanes[i].size(); j++) {
+                auto pt = remap(&lanes[i][j], &vc.diagram.min, &vc.diagram.max, &dimensions);
+                lstr.push_back(bst_point(pt.x, pt.y));
+            }
+            road_lines.push_back(lstr);
+        }
+
+        std::vector<bst_value> line_to_check;
+        for (size_t i = 0; i < edge_lines.size(); i++) {
+            auto pt0 = edge_lines[i].first;
+            auto pt1 = edge_lines[i].second;
+            bst_segment line = { bst_point(pt0.x, pt0.y), bst_point(pt1.x, pt1.y) };
+            bst_value val = make_pair(line, i);
+            line_to_check.push_back(val);
+        }
+
+        boost::geometry::index::rtree<bst_value, boost::geometry::index::rstar<16>> r_tree(line_to_check.begin(), line_to_check.end());
+
+        const double buffer_distance = 1 / vc.diagram.max.x * (double)width;
+        const int points_per_circle = 36;
+
+        boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(buffer_distance);
+        boost::geometry::strategy::buffer::join_round join_strategy(points_per_circle);
+        boost::geometry::strategy::buffer::end_round end_strategy(points_per_circle);
+        boost::geometry::strategy::buffer::point_circle circle_strategy(points_per_circle);
+        boost::geometry::strategy::buffer::side_straight side_strategy;
+
+        std::vector<std::vector<bst_value>> to_delete;
+        for (size_t i = 0; i < road_lines.size(); i++) {
+
+            auto line = road_lines[i];
+            std::vector<bst_value> to_delete_line;
+            boost::geometry::model::multi_polygon<bst_polygon> buffer;
+            boost::geometry::buffer(line, buffer, distance_strategy, side_strategy,
+                join_strategy, end_strategy, circle_strategy);
+
+            boost::geometry::index::query(r_tree, boost::geometry::index::intersects(buffer), std::back_inserter(to_delete_line));
+            to_delete.push_back(to_delete_line);
+        }
+
+        std::vector<bst_value> qry_result;
+
+        boost::geometry::index::query(r_tree, boost::geometry::index::intersects(bdry_poly), std::back_inserter(qry_result));
+
+        std::vector<uint32_t> qry_idx;
+        for (uint32_t i = 0; i < qry_result.size(); i++) {
+            qry_idx.push_back(qry_result[i].second);
+        }
+
+        std::vector<uint32_t> to_delete_idx;
+        for (size_t i = 0; i < to_delete.size(); i++) {
+            for (size_t j = 0; j < to_delete[i].size(); j++) {
+                to_delete_idx.push_back(to_delete[i][j].second);
+            }
+        }
+
+        std::vector<uint32_t> to_keep_idx = del_intersect(qry_idx, to_delete_idx, line_to_check.size());
+
+        for (uint32_t i = 0; i < to_keep_idx.size(); i++) {
+            jcv_point p0 = bst_val_to_jcv(line_to_check[to_keep_idx[i]], true);
+            jcv_point p1 = bst_val_to_jcv(line_to_check[to_keep_idx[i]], false);
+            color_edge[0] = 255;
+            color_edge[1] = 255;
+            color_edge[2] = 255;
+            //std::cout << "p0: " << p0.x << ", " << p0.y << "; p1: " << p1.x << ", " << p1.y << std::endl;
+            draw_line((double)p0.x, (double)p0.y, (double)p1.x, (double)p1.y, image, width, height, 3, color_edge);
+        }
+        
+
+
+
+
+
+        /* ----------- draw lane ------------- */
+        
+        // draw this time
+        for (const auto& lane : lanes) {
+            jcv_point p0 = remap(&lane[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+			for (const auto& point : lane) {
+				jcv_point p = remap(&point, &vc.diagram.min, &vc.diagram.max, &dimensions);
+				//plot((double)p.x, (double)p.y, image, width, height, 3, color_pt);
+                draw_line((double)p0.x, (double)p0.y, (double)p.x, (double)p.y, image, width, height, 3, color_pt);
+                //std::cout << "p0: " << p0.x << " " << p0.y << "; p: " << p.x << " " << p.y << std::endl;
+                p0 = p;
+			}
+		}
+
+        
+
+        for (auto& seg : segs) {
+            unsigned char color_pt[] = { 0, 255, 0 };
+            auto p0 = remap(&seg.min(), &vc.diagram.min, &vc.diagram.max, &dimensions);
+			auto p1 = remap(&seg.max(), &vc.diagram.min, &vc.diagram.max, &dimensions);   
+			draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color_pt);
+        }
+
+        unsigned char color_bdry[] = { 255, 0, 0 };
+        for (uint32_t i = 1; i < scaled_bdry.size(); i++)
+        {
+            auto curr = scaled_bdry[i];
+            auto prev = scaled_bdry[i - 1];
+            draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_bdry);
+        }
+
+        // flip image
+        int stride = width * 3;
+        uint8_t* row = (uint8_t*)malloc((size_t)stride);
+        for (int y = 0; y < height / 2; ++y)
+        {
+            memcpy(row, &image[y * stride], (size_t)stride);
+            memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
+            memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
+        }
+
+        char path[512];
+        sprintf_s(path, "out%d.png", count);
+
+        stbi_write_png(path, width, height, 3, image, stride);
+        std::cout << "done " << path << std::endl;
+
+        
+
+        free(image);
+        count++;
+    }
 
 }
 
-
+int main() {
+    //runsampledata();
+    runactualdata();
+	return 0;
+}
 
