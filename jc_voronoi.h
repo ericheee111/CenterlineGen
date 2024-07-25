@@ -125,6 +125,10 @@ struct jcv_point_
             return x < other.x;
         return y < other.y;
     }
+
+    bool operator==(const jcv_point& other) const {
+        return x == other.x && y == other.y;
+    }
 };
 
 struct jcv_graphedge_

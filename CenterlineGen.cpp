@@ -43,13 +43,17 @@
 #include <boost/geometry/geometries/multi_polygon.hpp>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Boolean_set_operations_2.h>
+#include <CGAL/partition_2.h>
+#include <CGAL/Polygon_with_holes_2.h>
+#include <CGAL/Polygon_2.h>
 #include <CGAL/Alpha_shape_2.h>
 #include <CGAL/Alpha_shape_vertex_base_2.h>
 #include <CGAL/Alpha_shape_face_base_2.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/algorithm.h>
 #include <CGAL/convex_hull_2.h>
-
+#include <CGAL/Simple_cartesian.h>
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> bst_point;
 typedef boost::geometry::model::segment<bst_point> bst_segment;
@@ -67,6 +71,9 @@ typedef CGAL::Triangulation_data_structure_2<Vb, Fb>          Tds;
 typedef CGAL::Delaunay_triangulation_2<K, Tds>                Triangulation_2;
 typedef CGAL::Alpha_shape_2<Triangulation_2>                 Alpha_shape_2;
 typedef Alpha_shape_2::Alpha_shape_edges_iterator            Alpha_shape_edges_iterator;
+
+typedef CGAL::Polygon_2<K> Polygon;
+typedef CGAL::Polygon_with_holes_2<K> Polygon_with_holes;
 
 typedef struct VoronoiContext_ {
     uint32_t num_points;
@@ -624,18 +631,31 @@ void alpha_edges(const Alpha_shape_2& A, OutputIterator out) {
     }
 }
 
-std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segments) {
-    std::map<jcv_point, jcv_point> point_map;
+void save_segments_to_csv(const std::vector<CGAL_Segment>& segments, const std::string& filename) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Unable to open file");
+    }
 
-    // Map sources to targets
+    for (const auto& segment : segments) {
+        jcv_point source = { segment.source().x(), segment.source().y()};
+        jcv_point target = { segment.target().x(), segment.target().y() };
+        file << source.x << "," << source.y << "," << target.x << "," << target.y << "\n";
+    }
+
+    file.close();
+}
+
+std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segments) {
+    std::map<jcv_point, std::vector<jcv_point>> adjacency_list;
+    std::set<std::pair<jcv_point, jcv_point>> visited_segments;
+
+    // Construct adjacency list
     for (const auto& segment : segments) {
         jcv_point source = { segment.source().x(), segment.source().y() };
         jcv_point target = { segment.target().x(), segment.target().y() };
-        std::cout << "s: " << source.x << " " << source.y << "; t: " << target.x << " " << target.y << std::endl;
-        if (point_map.find(source) != point_map.end()) {
-            std::cout << "-------- branch ------: " << point_map[source].x << " " << point_map[source].y << std::endl;
-        }
-        point_map[source] = target;
+        adjacency_list[source].push_back(target);
+        adjacency_list[target].push_back(source);
     }
 
     // Start from the first segment's source
@@ -644,14 +664,44 @@ std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segment
     jcv_point current = start;
     path.push_back(current);
 
-    // Construct the path
-    do {
-        if (point_map.find(current) == point_map.end()) break;
-        current = point_map.at(current);
-        path.push_back(current);
-    } while (current.x != start.x && current.y != start.y);
+    // To handle branches and backtracking
+    std::vector<std::pair<jcv_point, size_t>> stack;
 
-    path.push_back(start); // Close the path
+    while (true) {
+        bool found_next = false;
+
+        for (size_t i = 0; i < adjacency_list[current].size(); ++i) {
+            jcv_point next = adjacency_list[current][i];
+            if (visited_segments.find({ current, next }) == visited_segments.end()) {
+                stack.push_back({ current, i });
+                visited_segments.insert({ current, next });
+                visited_segments.insert({ next, current });
+                current = next;
+                path.push_back(current);
+                found_next = true;
+                break;
+            }
+        }
+
+        if (!found_next) {
+            if (current == start) {
+                break; // We have returned to the start, so the polygon is complete
+            }
+            if (stack.empty()) {
+                path.clear(); // No more points to backtrack to and not closed, path is invalid
+                break;
+            }
+            auto prev_point = stack.back().first;
+            auto index = stack.back().second;
+            stack.pop_back();
+            current = prev_point;
+            path.pop_back();
+        }
+    }
+
+    if (!path.empty()) {
+        path.push_back(start); // Close the path only if a valid path is found
+    }
 
     return path;
 }
@@ -983,10 +1033,10 @@ void runactualdata()
     std::cout << "Number of timestamps: " << lanedata.size() << std::endl;
     int count = 0;
     for (const auto& entry : lanedata) {
-        if (count != 66) {
+        /*if (count != 68) {
             count++;
             continue;
-        }
+        }*/
         std::cout << "Timestamp: " << entry.first << std::endl;
         std::vector<std::vector<PointDB>> lanes = entry.second; // all lanes in one timestemp
 		std::cout << "Number of lanes: " << lanes.size() << std::endl;
@@ -1013,7 +1063,7 @@ void runactualdata()
         std::vector<CGAL_Point> points = convert_to_cgal_points(lanes, vc);
 
         Alpha_shape_2 A(points.begin(), points.end(),
-            FT(40), // 11 - 50+
+            FT(60), // 11 - 50+
             Alpha_shape_2::GENERAL);
 
         std::vector<CGAL_Segment> segs;
@@ -1088,7 +1138,7 @@ void runactualdata()
 
         boost::geometry::index::rtree<bst_value, boost::geometry::index::rstar<16>> r_tree(line_to_check.begin(), line_to_check.end());
 
-        const double buffer_distance = 1 / vc.diagram.max.x * (double)width;
+        const double buffer_distance = 3 / vc.diagram.max.x * (double)width;
         const int points_per_circle = 36;
 
         boost::geometry::strategy::buffer::distance_symmetric<double> distance_strategy(buffer_distance);
@@ -1125,6 +1175,10 @@ void runactualdata()
                 to_delete_idx.push_back(to_delete[i][j].second);
             }
         }
+
+        /*sort(to_delete_idx.begin(), to_delete_idx.end());
+        auto it = std::unique(to_delete_idx.begin(), to_delete_idx.end());
+        to_delete_idx.erase(it, to_delete_idx.end());*/
 
         std::vector<uint32_t> to_keep_idx = del_intersect(qry_idx, to_delete_idx, line_to_check.size());
 
@@ -1174,6 +1228,52 @@ void runactualdata()
             draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_bdry);
         }
 
+        /* --------------- draw to delete seg for each line ----------------- */
+        int lc = 0;
+        for (const auto& del : to_delete) {
+            std::vector<uint32_t> idx;
+            for (size_t i = 0; i < del.size(); i++) {
+                idx.push_back(del[i].second);
+            }
+            unsigned char* imgline = (unsigned char*)malloc(imagesize);
+            memset(imgline, 0, imagesize);
+            memcpy(imgline, image, imagesize);
+            unsigned char color_pink[] = { 255, 192, 203 };
+            unsigned char color_cyan[] = { 38, 248, 255 };
+
+            for (uint32_t i = 0; i < idx.size(); i++) {
+                jcv_point p0 = bst_val_to_jcv(line_to_check[idx[i]], true);
+                jcv_point p1 = bst_val_to_jcv(line_to_check[idx[i]], false);
+                
+                //std::cout << "p0: " << p0.x << ", " << p0.y << "; p1: " << p1.x << ", " << p1.y << std::endl;
+                draw_line((double)p0.x, (double)p0.y, (double)p1.x, (double)p1.y, image, width, height, 3, color_pink);
+            }
+
+            for (int i = 0; i < road_lines.size(); i++) {
+                for (int j = 0; j < road_lines[i].size(); j++) {
+                    auto p0 = road_lines[i][j];
+                    auto p1 = road_lines[i][j];
+                    draw_line((double)p0.get<0>(), (double)p0.get<1>(), (double)p1.get<0>(), (double)p1.get<1>(), image, width, height, 3, color_cyan);
+                }
+            }
+
+            // flip image
+            int stride = width * 3;
+            uint8_t* row = (uint8_t*)malloc((size_t)stride);
+            for (int y = 0; y < height / 2; ++y)
+            {
+                memcpy(row, &imgline[y * stride], (size_t)stride);
+                memcpy(&imgline[y * stride], &imgline[(height - 1 - y) * stride], (size_t)stride);
+                memcpy(&imgline[(height - 1 - y) * stride], row, (size_t)stride);
+            }
+
+            char path[512];
+            sprintf_s(path, "out%d_%d.png", count, lc);
+            lc++;
+            stbi_write_png(path, width, height, 3, imgline, stride);
+            free(imgline);
+        }
+
         // flip image
         int stride = width * 3;
         uint8_t* row = (uint8_t*)malloc((size_t)stride);
@@ -1194,13 +1294,72 @@ void runactualdata()
 
         free(image);
         count++;
+        break;
     }
 
 }
 
+std::vector<CGAL_Segment> load_segments_from_csv(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Unable to open file");
+    }
+
+    std::vector<CGAL_Segment> segments;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        double x1, y1, x2, y2;
+        char comma;
+
+        if (!(ss >> x1 >> comma >> y1 >> comma >> x2 >> comma >> y2)) {
+            throw std::runtime_error("Malformed line: " + line);
+        }
+
+        CGAL_Point source(x1, y1);
+        CGAL_Point target(x2, y2);
+        segments.emplace_back(source, target);
+    }
+
+    file.close();
+    return segments;
+}
+
+//void testing() {
+//    std::vector<CGAL_Segment> loaded_segments = load_segments_from_csv("bdry.csv");
+//    for (const auto& segment : loaded_segments) {
+//        std::cout << "Segment: (" << segment.source().x() << ", " << segment.source().y() << ") -> ("
+//            << segment.target().x() << ", " << segment.target().y() << ")\n";
+//    }
+//
+//    std::vector<Polygon> polygons;
+//    for (const auto& seg : loaded_segments) {
+//        Polygon poly;
+//        poly.push_back(seg.source());
+//        poly.push_back(seg.target());
+//        polygons.push_back(poly);
+//    }
+//
+//
+//    Polygon_with_holes result;
+//    CGAL::join(polygons.begin(), polygons.end(), std::back_inserter(result));
+//
+//    if (result.is_unbounded()) {
+//        std::cout << "The resulting polygon is unbounded." << std::endl;
+//    }
+//    else {
+//        std::cout << "The resulting polygon vertices: " << std::endl;
+//        for (auto vertex = result.outer_boundary().vertices_begin(); vertex != result.outer_boundary().vertices_end(); ++vertex) {
+//            std::cout << *vertex << std::endl;
+//        }
+//    }
+//
+//}
+
 int main() {
     //runsampledata();
     runactualdata();
+    //testing();
 	return 0;
-}
+}               
 
