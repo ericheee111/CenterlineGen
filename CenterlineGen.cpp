@@ -21,6 +21,7 @@
 #include "jc_voronoi.h"
 #include "jc_voronoi_clip.h"
 #include "stb_image_write.h"
+#include "strtree.hpp"
 
 #include "PolynomialRegression.h"
 
@@ -56,7 +57,6 @@
 #include <CGAL/convex_hull_2.h>
 #include <CGAL/Simple_cartesian.h>
 
-#include <geos/index/strtree/STRtree.h>
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> bst_point;
 typedef boost::geometry::model::segment<bst_point> bst_segment;
@@ -1343,41 +1343,26 @@ std::vector<CGAL_Segment> load_segments_from_csv(const std::string& filename) {
     return segments;
 }
 
-//void testing() {
-//    std::vector<CGAL_Segment> loaded_segments = load_segments_from_csv("bdry.csv");
-//    for (const auto& segment : loaded_segments) {
-//        std::cout << "Segment: (" << segment.source().x() << ", " << segment.source().y() << ") -> ("
-//            << segment.target().x() << ", " << segment.target().y() << ")\n";
-//    }
-//
-//    std::vector<Polygon> polygons;
-//    for (const auto& seg : loaded_segments) {
-//        Polygon poly;
-//        poly.push_back(seg.source());
-//        poly.push_back(seg.target());
-//        polygons.push_back(poly);
-//    }
-//
-//
-//    Polygon_with_holes result;
-//    CGAL::join(polygons.begin(), polygons.end(), std::back_inserter(result));
-//
-//    if (result.is_unbounded()) {
-//        std::cout << "The resulting polygon is unbounded." << std::endl;
-//    }
-//    else {
-//        std::cout << "The resulting polygon vertices: " << std::endl;
-//        for (auto vertex = result.outer_boundary().vertices_begin(); vertex != result.outer_boundary().vertices_end(); ++vertex) {
-//            std::cout << *vertex << std::endl;
-//        }
-//    }
-//
-//}
+
+
+void testing() {
+    std::vector<std::pair<jcv_point, jcv_point>> centerlines = {
+        {{0, 0}, {10, 10}}, {{20, 20}, {30, 30}}, {{5, 5}, {15, 15}}
+    };
+    std::vector<jcv_point> boundary = { {0, 0}, {10, 0}, {10, 10}, {0, 10}, {0, 0} };
+        
+    auto filteredCenterlines = filterCenterlines(centerlines, boundary);
+        
+    for (const auto& line : filteredCenterlines) {
+        std::cout << "Filtered line: ((" << line.first.x << ", " << line.first.y << "), (" << line.second.x << ", " << line.second.y << "))\n";
+    }
+        
+}
 
 int main() {
     //runsampledata();
-    runactualdata();
-    //testing();
+    //runactualdata();
+    testing();
 	return 0;
 }               
 
