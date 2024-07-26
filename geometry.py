@@ -7,7 +7,7 @@ from scipy.spatial import Voronoi
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Polygon
 from shapely.ops import unary_union
 from shapely.strtree import STRtree
-
+from time import perf_counter
 import exceptions
 
 
@@ -76,6 +76,7 @@ class Centerline:
             setattr(self, key, attributes.get(key))
 
     def _construct_centerline(self):
+        st = perf_counter()
         vertices, ridges, vor = self._get_voronoi_vertices_and_ridges()
         linestrings = []
         for ridge in ridges:
@@ -89,18 +90,22 @@ class Centerline:
                 )
                 linestring = LineString((starting_point, ending_point))
                 linestrings.append(linestring)
+        et = perf_counter()
+        print("Elapsed Time for Create Voronoi: {:.10f}".format((et-st)*10**3), " ms")
 
+        st = perf_counter()
         str_tree = STRtree(linestrings)
         linestrings_indexes = str_tree.query(
             self._bdry, predicate="contains_properly"
         )
         touching_linestrings = str_tree.query(
-            self._input_geometry, predicate="intersects"
+            self._input_geometry, predicate="dwithin", distance=1.1
         )
         contained_linestrings = [linestrings[i] for i in linestrings_indexes if i not in touching_linestrings]
         if len(contained_linestrings) < 2:
             raise exceptions.TooFewRidgesError
-
+        et = perf_counter()
+        print("Elapsed Time for STRtree: {:.10f}".format((et-st)*10**3), " ms")
         # changed from unary_union(contained_linestrings), let output as a list of linestrings, easier to delete unwanted branches
         # return unary_union(contained_linestrings)    ##
         return contained_linestrings, vor
