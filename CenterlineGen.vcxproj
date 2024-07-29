@@ -166,6 +166,7 @@
     <ClInclude Include="PolynomialRegression.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stb_image_write.h" />
+    <ClInclude Include="strtree.hpp" />
     <ClInclude Include="voronoi.h" />
   </ItemGroup>
   <ItemGroup>

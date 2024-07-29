@@ -5,23 +5,24 @@
 #include <geos/geom/GeometryFactory.h>
 #include <geos/geom/Geometry.h>
 #include <geos/geom/Point.h>
-#include <geos/geom/LineString.h>
 #include <geos/geom/Polygon.h>
 #include <geos/index/strtree/TemplateSTRtree.h>
-#include <geos/geom/CoordinateSequence.h>
 #include "jc_voronoi.h"
 
 #include <geos/geom/CoordinateSequence.h>
 #include <geos/geom/CoordinateArraySequence.h>
 #include <geos/geom/GeometryFactory.h>
 #include <geos/geom/LineString.h>
+#include <geos/operation/linemerge/LineMerger.h>
 #include <iostream>
 #include <geos/index/strtree/STRtree.h>
-#include "geos_c.h"
+#include <chrono>
+
 
 
 using namespace geos::geom;
 using namespace geos::index::strtree;
+using namespace geos::operation::linemerge;
 
 // Function to convert jcv_point to GEOS Coordinate
 Coordinate toCoordinate(const jcv_point& point) {
@@ -76,6 +77,7 @@ std::vector<std::pair<jcv_point, jcv_point>> filterCenterlines(
     // Create STRtree index
     TemplateSTRtree<Geometry*> index;
 
+    auto start = std::chrono::high_resolution_clock().now();
     // Insert centerlines into the index
     std::vector<std::unique_ptr<Geometry>> geometries;
     for (const auto& line : centerlines) {
@@ -84,37 +86,71 @@ std::vector<std::pair<jcv_point, jcv_point>> filterCenterlines(
         geometries.push_back(std::move(lineString));
     }
 
+    auto end = std::chrono::high_resolution_clock().now();
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+    std::cout << "------- Elapsed time -- put in strtree: " << elapsed.count() << " ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock().now();
+
     // Create boundary polygon
     auto boundaryPolygon = makePolygon(boundary, factory.get());
 
+    end = std::chrono::high_resolution_clock().now();
+    elapsed = end - start;
+    std::cout << "------- Elapsed time -- create polygon: " << elapsed.count() << " ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock().now();
+
     auto lanelines = makeMultiLineString(lanes, factory.get());
+
+    end = std::chrono::high_resolution_clock().now();
+    elapsed = end - start;
+    std::cout << "------- Elapsed time -- create multilinestring: " << elapsed.count() << " ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock().now();
 
     // Query the index with the boundary polygon
     std::vector<Geometry*> queryResult;
+    const Envelope* queryEnv = boundaryPolygon->getEnvelopeInternal();
+
     auto visitor = [&queryResult, &boundaryPolygon, &lanelines](Geometry* geom) {
-        /*if (geom->within(boundaryPolygon) && !geom->intersects(lanelines.get())) {
-            queryResult.push_back(geom);
-            
-        }*/
+        //if (geom->within(boundaryPolygon)) {
         if (geom->within(boundaryPolygon) && geom->distance(lanelines.get()) >= 1.2) {
             queryResult.push_back(geom);
-
         }
+        //}
     };
-    const Envelope* queryEnv = boundaryPolygon->getEnvelopeInternal();
+    
     index.query(*queryEnv, visitor);
+
+
+    end = std::chrono::high_resolution_clock().now();
+    elapsed = end - start;
+    std::cout << "------- Elapsed time -- query: " << elapsed.count() << " ms" << std::endl;
+
+    start = std::chrono::high_resolution_clock().now();
 
     // Filter the original centerlines based on query result
     std::vector<std::pair<jcv_point, jcv_point>> filteredCenterlines;
+
+    /*for (const auto& geom : queryResult) {
+        const auto* lineString = dynamic_cast<const geos::geom::LineString*>(geom);
+        jcv_point p0 = { lineString->getCoordinatesRO()->getAt(0).x, lineString->getCoordinatesRO()->getAt(0).y };
+        jcv_point p1 = { lineString->getCoordinatesRO()->getAt(1).x, lineString->getCoordinatesRO()->getAt(0).y };
+        filteredCenterlines.emplace_back(std::make_pair(p0, p1));
+    }*/
+    geos::operation::linemerge::LineMerger merger;
     for (const auto& geom : queryResult) {
-        for (const auto& line : centerlines) {
-            auto lineString = makeLineString(line, factory.get());
-            if (lineString->equals(geom)) {
-                filteredCenterlines.push_back(line);
-                break;
-            }
-        }
+        //const auto* lineString = dynamic_cast<const geos::geom::LineString*>(geom);
+        // Use LineMerger to merge the lines in the query result
+        merger.add(geom);
     }
+    std::vector<std::unique_ptr<Geometry>> mergedLines = merger.getMergedLineStrings();
+
+
+    end = std::chrono::high_resolution_clock().now();
+    elapsed = end - start;
+    std::cout << "------- Elapsed time -- filter: " << elapsed.count() << " ms" << std::endl;
 
     return filteredCenterlines;
 }
