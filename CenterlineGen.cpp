@@ -1343,26 +1343,305 @@ std::vector<CGAL_Segment> load_segments_from_csv(const std::string& filename) {
     return segments;
 }
 
-
+ 
 
 void testing() {
-    std::vector<std::pair<jcv_point, jcv_point>> centerlines = {
-        {{0, 0}, {10, 10}}, {{20, 20}, {30, 30}}, {{5, 5}, {15, 15}}
+    std::vector<std::pair<jcv_point, jcv_point>> centerlines11;
+    std::vector<jcv_point> boundary11 = {
+        {50, 50}, {250, 50}, {250, 250}, {50, 250}, {50, 50}
     };
-    std::vector<jcv_point> boundary = { {0, 0}, {10, 0}, {10, 10}, {0, 10}, {0, 0} };
+
+    std::vector<std::vector<jcv_point>> lanelines = {
+        {{80, 50}, {80, 80}, {80, 120}, {80, 150}, {80, 250}},
+        {{120, 50}, {120, 80}, {120, 120}, {120, 150}, {120, 250}},
+        {{180, 50}, {180, 80}, {180, 120}, {180, 150}, {180, 250}}
+    };
+
+    for (int i = 0; i < 50; ++i) {
+        // Generate random points within the boundary
+        jcv_point start = { rand() % (149 - 51 + 1) + 51, rand() % (149 - 51 + 1) + 51 };
+        jcv_point end = { rand() % (149 - 51 + 1) + 51, rand() % (149 - 51 + 1) + 51 };
+
+        // Ensure the start point is not the same as the end point
+        while (start.x == end.x && start.y == end.y) {
+            end = { (double)(rand() % (149 - 51 + 1)) + 51, (double)(rand() % (149 - 51 + 1) + 51) };
+        }
+
+        centerlines11.push_back({ {start}, {end} });
+    }
+    for (int i = 0; i < 50; ++i) {
+        // Generate random points within the boundary
+        jcv_point start = { rand() % (75 - 30 + 1) + 30, rand() % (65 - 30 + 1) + 33 };
+        jcv_point end = { rand() % (90 - 39 + 1) + 40, rand() % (110 - 87 + 1) + 87 };
+        centerlines11.push_back({ {start}, {end} });
+    }
+
+    for (int i = 0; i < 50; ++i) {
+        // Generate random points within the boundary
+        jcv_point start = { rand() % (250 - 200 + 1) + 200, rand() % (250 - 170 + 1) + 180 };
+        jcv_point end = { rand() % (250 - 200 + 1) + 200, rand() % (250 - 170 + 1) + 180 };
+        centerlines11.push_back({ {start}, {end} });
+    }
+
+    for (int i = 0; i < 50; ++i) {
+        // Generate random points within the boundary
+        jcv_point start = { rand() % (200 - 130 + 1) + 130, rand() % (190 - 120 + 1) + 120 };
+        jcv_point end = { rand() % (200 - 130 + 1) + 130, rand() % (190 - 120 + 1) + 120 };
+        centerlines11.push_back({ {start}, {end} });
+    }
+
+
+    unsigned char color_red[] = { 255, 0, 0 };
+    unsigned char color_blue[] = { 0, 0, 255 };
+    unsigned char color_green[] = { 0, 255, 0 };
+    int width = 256;
+    int height = 256;
+    size_t imagesize = (size_t)(width * height * 3);
+    unsigned char* image = (unsigned char*)malloc(imagesize);
+    memset(image, 0, imagesize);
+    jcv_point dimensions;
+    dimensions.x = (jcv_real)width;
+    dimensions.y = (jcv_real)height;
+
+    for (int i = 1; i < boundary11.size(); i++) {
+        jcv_point min = { 0,0 };
+        jcv_point max = { 200, 200 };
+        /*auto pt1 = remap(&boundary11[i], &min, &max, &dimensions);
+        auto pt2 = remap(&boundary11[i - 1], &min, &max, &dimensions);*/
+        auto pt1 = boundary11[i];
+        auto pt2 = boundary11[i - 1];
+        draw_line(pt1.x, pt1.y, pt2.x, pt2.y, image, width, height, 3, color_blue);
+    }
+
+    for (auto& lane : lanelines) {
+        for (int i = 1; i < lane.size(); i++) {
+            auto pt1 = lane[i];
+            auto pt2 = lane[i - 1];
+            draw_line(pt1.x, pt1.y, pt2.x, pt2.y, image, width, height, 3, color_blue);
+        }
+    }
+
+
+    for (int i = 0; i < centerlines11.size(); i++) {
+        jcv_point min = { 0,0 };
+        jcv_point max = { 200, 200 };
+        /*auto pt1 = remap(&centerlines11[i].first, &min, &max, &dimensions);
+        auto pt2 = remap(&centerlines11[i].second, &min, &max, &dimensions);*/
+        auto pt1 = centerlines11[i].first;
+        auto pt2 = centerlines11[i].second;
+        draw_line(pt1.x, pt1.y, pt2.x, pt2.y, image, width, height, 3, color_red);
+    }
+
         
-    auto filteredCenterlines = filterCenterlines(centerlines, boundary);
+    auto filteredCenterlines = filterCenterlines(centerlines11, boundary11, lanelines);
         
     for (const auto& line : filteredCenterlines) {
-        std::cout << "Filtered line: ((" << line.first.x << ", " << line.first.y << "), (" << line.second.x << ", " << line.second.y << "))\n";
+        //std::cout << "Filtered line: ((" << line.first.x << ", " << line.first.y << "), (" << line.second.x << ", " << line.second.y << "))\n";
+        jcv_point min = { 0,0 };
+        jcv_point max = { 200, 200 };
+        /*auto pt1 = remap(&line.first, &min, &max, &dimensions);
+        auto pt2 = remap(&line.second, &min, &max, &dimensions);*/
+        auto pt1 = line.first;
+        auto pt2 = line.second;
+
+        draw_line(pt1.x, pt1.y, pt2.x, pt2.y, image, width, height, 3, color_green);
     }
         
+
+    // flip image
+    int stride = width * 3;
+    uint8_t* row = (uint8_t*)malloc((size_t)stride);
+    for (int y = 0; y < height / 2; ++y)
+    {
+        memcpy(row, &image[y * stride], (size_t)stride);
+        memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
+        memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
+    }
+
+    char path[512];
+    sprintf_s(path, "geosstrtreeexample.png");
+
+    stbi_write_png(path, width, height, 3, image, stride);
+    std::cout << "done " << path << std::endl;
+
+
+
+    free(image);
+}
+
+// Function to convert PointDB to jcv_point
+inline jcv_point convertPointDBToJcvPoint(const PointDB& point) {
+    return { point.x, point.y };
+}
+
+// Function to convert vector of vector of PointDB to vector of vector of jcv_point
+std::vector<std::vector<jcv_point>> pointDBtoJCV(const std::vector<std::vector<PointDB>>& points) {
+    std::vector<std::vector<jcv_point>> result;
+    result.reserve(points.size()); // Reserve space to improve performance
+
+    for (const auto& row : points) {
+        std::vector<jcv_point> newRow;
+        newRow.reserve(row.size()); // Reserve space to improve performance
+        for (const auto& point : row) {
+            newRow.push_back(convertPointDBToJcvPoint(point));
+        }
+        result.push_back(std::move(newRow));
+    }
+
+    return result;
+}
+
+void runactualgeos()
+{
+    std::string filename = "lanes.csv";
+    std::map<long long, std::vector<std::vector<PointDB>>> lanedata = readActualCSV(filename);
+    std::cout << "Number of timestamps: " << lanedata.size() << std::endl;
+    int count = 0;
+    for (const auto& entry : lanedata) {
+        if (count != 10) {
+            count++;
+            continue;
+        }
+        std::cout << "Timestamp: " << entry.first << std::endl;
+        std::vector<std::vector<PointDB>> lanes = entry.second; // all lanes in one timestemp
+        std::cout << "Number of lanes: " << lanes.size() << std::endl;
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lanes);
+
+        auto lanelines = pointDBtoJCV(lanes);
+
+        vorcon vc;
+        int width = 512;
+        int height = 512;
+        size_t imagesize = (size_t)(width * height * 3);
+        unsigned char* image = (unsigned char*)malloc(imagesize);
+        memset(image, 0, imagesize);
+
+        jcv_point dimensions;
+        dimensions.x = (jcv_real)width;
+        dimensions.y = (jcv_real)height;
+
+        std::vector<CGAL_Point> points = convert_to_cgal_points(lanes, vc);
+        vc.rect = { bounding_box[0].first, bounding_box[0].second, bounding_box[1].first, bounding_box[1].second };
+        memset(&vc.diagram, 0, sizeof(jcv_diagram));
+
+        auto end = std::chrono::high_resolution_clock::now();
+
+        std::chrono::duration<double, std::milli> elapsed = end - start;
+        std::cout << "Elapsed time -- preprocess: " << elapsed.count() << " ms" << std::endl;
+
+        start = std::chrono::high_resolution_clock::now();
+
+        Alpha_shape_2 A(points.begin(), points.end(),
+            FT(60), // 11 - 50+
+            Alpha_shape_2::GENERAL);
+
+        std::vector<CGAL_Segment> segs;
+        alpha_edges(A, std::back_inserter(segs));
+        auto cgal_bdry = segments_to_path(segs);
+      
+        end = std::chrono::high_resolution_clock::now();
+        elapsed = end - start;
+        std::cout << "Elapsed time -- alphashape: " << elapsed.count() << " ms" << std::endl;
+
+        start = std::chrono::high_resolution_clock::now();
+
+        jcv_diagram_generate(vc.num_points, vc.points, &vc.rect, 0, &vc.diagram);
+
+        end = std::chrono::high_resolution_clock::now();
+        elapsed = end - start;
+        std::cout << "Elapsed time -- voronoi gen: " << elapsed.count() << " ms" << std::endl;
+
+        start = std::chrono::high_resolution_clock::now();
+
+        // If all you need are the edges
+        const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
+        int edgecount = 1;
+        std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
+        unsigned char color_red[] = { 255, 0, 0 };
+        unsigned char color_blue[] = { 0, 0, 255 };
+        unsigned char color_green[] = { 0, 255, 0 };
+        unsigned char color_white[] = { 255, 255, 255 };
+        unsigned char color_yellow[] = { 250, 250, 210 };
+        while (edge)
+        {
+            edge_lines.push_back(make_pair(edge->pos[0], edge->pos[1]));
+            edge = jcv_diagram_get_next_edge(edge);
+            edgecount++;
+        }
+
+        end = std::chrono::high_resolution_clock::now();
+        elapsed = end - start;
+        std::cout << "Elapsed time -- get edge: " << elapsed.count() << " ms" << std::endl;
+
+        start = std::chrono::high_resolution_clock::now();
+
+        auto filteredCenterlines = filterCenterlines(edge_lines, cgal_bdry, lanelines);
+
+        end = std::chrono::high_resolution_clock::now();
+        elapsed = end - start;
+        std::cout << "Elapsed time -- rtree: " << elapsed.count() << " ms" << std::endl;
+
+        
+        for (const auto& seg : filteredCenterlines) {
+            auto p0 = remap(&seg.first, &vc.diagram.min, &vc.diagram.max, &dimensions);
+            auto p1 = remap(&seg.second, &vc.diagram.min, &vc.diagram.max, &dimensions);
+            draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color_white);
+        }
+        
+
+
+        /* ----------- draw lane ------------- */
+
+        // draw this frame lane lines
+        for (const auto& lane : lanes) {
+            jcv_point p0 = remap(&lane[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            for (const auto& point : lane) {
+                jcv_point p = remap(&point, &vc.diagram.min, &vc.diagram.max, &dimensions);
+                draw_line((double)p0.x, (double)p0.y, (double)p.x, (double)p.y, image, width, height, 3, color_red);
+                p0 = p;
+            }
+        }
+
+        for (uint32_t i = 1; i < cgal_bdry.size(); i++)
+        {
+            auto curr = remap(&cgal_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            auto prev = remap(&cgal_bdry[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_green);
+        }
+
+        // flip image
+        int stride = width * 3;
+        uint8_t* row = (uint8_t*)malloc((size_t)stride);
+        for (int y = 0; y < height / 2; ++y)
+        {
+            memcpy(row, &image[y * stride], (size_t)stride);
+            memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
+            memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
+        }
+
+        char path[512];
+        sprintf_s(path, "out%d.png", count);
+
+        stbi_write_png(path, width, height, 3, image, stride);
+        std::cout << "done " << path << std::endl;
+
+
+
+        free(image);
+        count++;
+        break;
+    }
+
 }
 
 int main() {
     //runsampledata();
     //runactualdata();
-    testing();
+    //testing();
+    runactualgeos();
 	return 0;
 }               
 
