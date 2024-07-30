@@ -14,10 +14,8 @@ from shapely.geometry import Point, LineString, GeometryCollection
 from shapely.ops import split, unary_union, linemerge
 from geometry import *
 from exceptions import *
-import networkx as nx
 from scipy.interpolate import splprep, splev
 # import matplotlib.animation as animation
-import geopandas as gpd
 import alphashape
 
 def interpolate_points(start, end, num_points):
@@ -115,9 +113,11 @@ def custom_csv_reader(file_path):
 # Read and parse the CSV file
 file_path = 'lanes.csv'
 parsed_data = custom_csv_reader(file_path)
-
+count = 10
 for timestamp, smoothed_lines in parsed_data.items():
-
+    if count != 10:
+        count += 1
+        continue
     # print(len(smoothed_lines))
     # for line in smoothed_lines:
     #     print(len(line[1]))
@@ -169,6 +169,8 @@ for timestamp, smoothed_lines in parsed_data.items():
 
     ctl = centerline.centerlines
 
+    print(len(ctl))
+
     coords = [cor.xy for cor in ctl]
 
     for i, cor in enumerate(coords):
@@ -183,7 +185,7 @@ for timestamp, smoothed_lines in parsed_data.items():
     ## identify each line by branch nodes
     # st = perf_counter()
     multiline = geometry.MultiLineString(ctl)
-    # print(multiline)
+    # print(len(multiline))
     merged = linemerge(multiline)
     # print(merged)
     # et = perf_counter()

@@ -64,9 +64,22 @@ std::unique_ptr<MultiLineString> makeMultiLineString(const std::vector<std::vect
     return std::unique_ptr<MultiLineString>(factory->createMultiLineString(std::move(lineStrings)));
 }
 
+void savetofile(std::vector<std::vector<jcv_point>> lines) {
+    std::ofstream file("data.txt");
+    if (!file.is_open()) return;
+
+    for (const auto& line : lines) {
+        for (const auto& point : line) {
+            file << point.x << "," << point.y << " ";
+        }
+        file << std::endl; // New line for each line series
+    }
+
+    file.close();
+}
 
 // Main function to filter centerlines based on boundary
-std::vector<std::pair<jcv_point, jcv_point>> filterCenterlines(
+std::vector<std::vector<jcv_point>> filterCenterlines(
     const std::vector<std::pair<jcv_point, jcv_point>>& centerlines,
     const std::vector<jcv_point>& boundary, 
     const std::vector<std::vector<jcv_point>>& lanes) {
@@ -135,23 +148,64 @@ std::vector<std::pair<jcv_point, jcv_point>> filterCenterlines(
 
     /*for (const auto& geom : queryResult) {
         const auto* lineString = dynamic_cast<const geos::geom::LineString*>(geom);
-        jcv_point p0 = { lineString->getCoordinatesRO()->getAt(0).x, lineString->getCoordinatesRO()->getAt(0).y };
-        jcv_point p1 = { lineString->getCoordinatesRO()->getAt(1).x, lineString->getCoordinatesRO()->getAt(0).y };
+        jcv_point p0 = { (float)(lineString->getCoordinatesRO()->getAt(0).x), (float)(lineString->getCoordinatesRO()->getAt(0).y) };
+        jcv_point p1 = { (float)(lineString->getCoordinatesRO()->getAt(1).x), (float)(lineString->getCoordinatesRO()->getAt(0).y) };
         filteredCenterlines.emplace_back(std::make_pair(p0, p1));
     }*/
-    geos::operation::linemerge::LineMerger merger;
+    //std::cout << "------- Filtered centerlines: " << queryResult.size() << std::endl;
+    std::vector<std::vector<jcv_point>> centerline;
+    /*for (uint32_t i = 0; i < queryResult.size(); i++) {
+        auto geom = dynamic_cast<geos::geom::LineString*>(queryResult[i]);
+        jcv_point p0 = { (float)(geom->getCoordinatesRO()->getAt(0).x), (float)(geom->getCoordinatesRO()->getAt(0).y) };
+        jcv_point p1 = { (float)(geom->getCoordinatesRO()->getAt(1).x), (float)(geom->getCoordinatesRO()->getAt(0).y) };
+        centerline.push_back({ p0, p1 });
+    }*/
     for (const auto& geom : queryResult) {
-        //const auto* lineString = dynamic_cast<const geos::geom::LineString*>(geom);
-        // Use LineMerger to merge the lines in the query result
-        merger.add(geom);
+        auto line = dynamic_cast<geos::geom::LineString*>(geom);
+        std::vector<jcv_point> points;
+        for (int i = 0; i < line->getNumPoints(); i++) {
+            auto coord = line->getCoordinateN(i);
+            points.push_back({ (float)coord.x, (float)coord.y });
+        }
+        centerline.push_back(points);
     }
-    std::vector<std::unique_ptr<Geometry>> mergedLines = merger.getMergedLineStrings();
+    std::unique_ptr<geos::geom::MultiLineString> multilinestring = makeMultiLineString(centerline, factory.get());
+    geos::operation::linemerge::LineMerger lineMerger;
+    lineMerger.add(multilinestring.get());
+    auto merged(lineMerger.getMergedLineStrings());
+    //std::cout << "------- Merged lines 2: " << merged.size() << std::endl;
+    /*for (const auto& line : merged) {
+        std::cout << line->toString() << std::endl;
+    }*/
+    
+	end = std::chrono::high_resolution_clock().now();
 
+    std::vector<std::vector<jcv_point>> ctls;
+
+    for (const auto& line : merged) {
+        std::vector<jcv_point> points;
+        for (int i = 0; i < line->getNumPoints(); i++) {
+            auto coord = line->getCoordinateN(i);
+			points.push_back({ coord.x, coord.y });
+		}
+        ctls.push_back(points);
+	}
+    //savetofile(ctls);
+ //   std::unique_ptr<geos::geom::MultiLineString> multiLine = makeMultiLineString(ctls, factory.get());
+
+ //   // Use LineMerger to merge the MultiLineString
+ //   geos::operation::linemerge::LineMerger lineMerger2;
+ //   lineMerger2.add(multiLine.get());
+ //   auto merged(lineMerger2.getMergedLineStrings());
+ //   std::cout << "------- Merged lines 2: " << merged.size() << std::endl;
+ //   for (const auto& line : merged) {
+ //       std::cout << line->toString() << std::endl;
+ //   }
 
     end = std::chrono::high_resolution_clock().now();
     elapsed = end - start;
-    std::cout << "------- Elapsed time -- filter: " << elapsed.count() << " ms" << std::endl;
+    std::cout << "------- Elapsed time -- filter & merge: " << elapsed.count() << " ms" << std::endl;
 
-    return filteredCenterlines;
+    return ctls;
 }
 

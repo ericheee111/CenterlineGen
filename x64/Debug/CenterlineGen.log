@@ -5,49 +5,19 @@ C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\jc_voronoi.h(1090
 C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\jc_voronoi_clip.h(71,12): warning C4244: 'argument': conversion from 'jcv_real' to 'float', possible loss of data
   The GEOS C++ API is unstable, please use the C API instead
   HINT: #include geos_c.h
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\strtree.hpp(149,12): error C2660: 'geos::operation::linemerge::LineMerger::getMergedLineStrings': function does not take 1 arguments
 C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(327,21): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(413,53): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(413,83): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(414,51): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(414,81): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(425,52): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(425,81): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(426,50): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(426,80): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(432,54): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(432,86): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(433,52): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(433,84): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(439,54): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(439,86): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(440,52): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(440,84): warning C4838: conversion from 'int' to 'jcv_real' requires a narrowing conversion
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(464,43): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(464,36): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(464,29): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(464,22): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(471,47): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(471,40): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(471,33): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(471,26): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(483,43): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(483,36): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(483,29): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(483,22): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(498,43): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(498,36): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(498,29): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(498,22): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(650,43): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(650,37): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(650,31): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(650,25): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(662,77): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(662,64): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(662,51): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(662,37): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(671,51): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(671,43): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(671,35): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
-C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(671,27): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(692,47): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(692,41): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(692,35): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(692,29): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(706,77): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(706,64): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(706,51): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(706,37): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(715,51): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(715,43): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(715,35): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\CenterlineGen\CenterlineGen.cpp(715,27): warning C4244: 'argument': conversion from 'jcv_real' to 'int', possible loss of data
+  CenterlineGen.vcxproj -> C:\Users\Eric\Desktop\study\gacrnd\CenterlineGen\x64\Debug\CenterlineGen.exe
+  'pwsh.exe' is not recognized as an internal or external command,
+  operable program or batch file.
