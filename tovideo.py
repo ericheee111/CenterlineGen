@@ -25,7 +25,7 @@ def make_video(image_folder, video_name, fps):
     print("Video creation complete.")
 
 # Usage
-image_folder = "C:/Users/Eric/Desktop/study/gacrnd/CenterlineGen/CenterlineGen"
+image_folder = "C:/Users/Eric/Desktop/study/gacrnd/CenterlineGen/CenterlineGen/img"
 video_name = 'output_video.mp4'       # Name of the output video file
 fps = 10                              # Frames per second
 

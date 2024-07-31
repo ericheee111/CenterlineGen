@@ -227,6 +227,42 @@ static inline jcv_point remap(const CGAL_Point* pt, const jcv_point* min, const 
     return p;
 }
 
+static void draw_triangle(const jcv_point* v0, const jcv_point* v1, const jcv_point* v2, unsigned char* image, int width, int height, int nchannels, unsigned char* color)
+{
+    int area = orient2d(v0, v1, v2);
+    if (area == 0)
+        return;
+
+    // Compute triangle bounding box
+    int minX = min3((int)v0->x, (int)v1->x, (int)v2->x);
+    int minY = min3((int)v0->y, (int)v1->y, (int)v2->y);
+    int maxX = max3((int)v0->x, (int)v1->x, (int)v2->x);
+    int maxY = max3((int)v0->y, (int)v1->y, (int)v2->y);
+
+    // Clip against screen bounds
+    minX = max2(minX, 0);
+    minY = max2(minY, 0);
+    maxX = min2(maxX, width - 1);
+    maxY = min2(maxY, height - 1);
+
+    // Rasterize
+    jcv_point p;
+    for (p.y = (jcv_real)minY; p.y <= (jcv_real)maxY; p.y++) {
+        for (p.x = (jcv_real)minX; p.x <= (jcv_real)maxX; p.x++) {
+            // Determine barycentric coordinates
+            int w0 = orient2d(v1, v2, &p);
+            int w1 = orient2d(v2, v0, &p);
+            int w2 = orient2d(v0, v1, &p);
+
+            // If p is on or inside all edges, render pixel.
+            if (w0 >= 0 && w1 >= 0 && w2 >= 0)
+            {
+                plot((int)p.x, (int)p.y, image, width, height, nchannels, color);
+            }
+        }
+    }
+}
+
 /* ----------------------------------------------------------------------- */
 std::vector<PointDB> readCSV(const std::string& filename) {
     std::vector<PointDB> points;
@@ -579,24 +615,25 @@ void runactualgeos()
     std::map<long long, std::vector<std::vector<PointDB>>> lanedata = readActualCSV(filename);
     std::cout << "Number of timestamps: " << lanedata.size() << std::endl;
     int count = 0;
+    uint32_t totaltime = 0;
     for (const auto& entry : lanedata) {
-        if (count != 10) {
+        /*if (count != 10) {
             count++;
             continue;
-        }
-        std::cout << "Timestamp: " << entry.first << std::endl;
-        std::vector<std::vector<PointDB>> lanes = entry.second; // all lanes in one timestemp
+        }*/
+        //std::cout << "Timestamp: " << entry.first << std::endl;
+        std::vector<std::vector<PointDB>> inlanes = entry.second; // all lanes in one timestemp
 
-        /*std::vector<std::vector<PointDB>> lanes;
+        std::vector<std::vector<PointDB>> lanes;
         for (const auto& inlane : inlanes) {
             std::vector<PointDB> line;
-            for (uint32_t i = 0; i < inlane.size(); i += 2) {
+            for (uint32_t i = 0; i < inlane.size(); i += 5) {
                 line.push_back(inlane[i]);
             }
             lanes.push_back(line);
-        }*/
+        }
 
-        std::cout << "Number of lanes: " << lanes.size() << std::endl;
+        //std::cout << "Number of lanes: " << lanes.size() << std::endl;
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -619,12 +656,12 @@ void runactualgeos()
         vc.rect = { bounding_box[0].first, bounding_box[0].second, bounding_box[1].first, bounding_box[1].second };
         memset(&vc.diagram, 0, sizeof(jcv_diagram));
 
-        auto end = std::chrono::high_resolution_clock::now();
+        /*auto end = std::chrono::high_resolution_clock::now();
 
         std::chrono::duration<double, std::milli> elapsed = end - start;
-        std::cout << "Elapsed time -- preprocess: " << elapsed.count() << " ms" << std::endl;
+        std::cout << "Elapsed time -- preprocess: " << elapsed.count() << " ms" << std::endl;*/
 
-        start = std::chrono::high_resolution_clock::now();
+        //start = std::chrono::high_resolution_clock::now();
 
         Alpha_shape_2 A(points.begin(), points.end(),
             FT(60), // 11 - 50+
@@ -634,32 +671,60 @@ void runactualgeos()
         alpha_edges(A, std::back_inserter(segs));
         auto cgal_bdry = segments_to_path(segs);
       
-        end = std::chrono::high_resolution_clock::now();
+        /*end = std::chrono::high_resolution_clock::now();
         elapsed = end - start;
-        std::cout << "Elapsed time -- alphashape: " << elapsed.count() << " ms" << std::endl;
+        std::cout << "Elapsed time -- alphashape: " << elapsed.count() << " ms" << std::endl;*/
 
-        start = std::chrono::high_resolution_clock::now();
+        //start = std::chrono::high_resolution_clock::now();
 
         jcv_diagram_generate(vc.num_points, vc.points, &vc.rect, 0, &vc.diagram);
 
-        end = std::chrono::high_resolution_clock::now();
+        /*end = std::chrono::high_resolution_clock::now();
         elapsed = end - start;
         std::cout << "Elapsed time -- voronoi gen: " << elapsed.count() << " ms" << std::endl;
 
-        start = std::chrono::high_resolution_clock::now();
+        start = std::chrono::high_resolution_clock::now();*/
+
+        const jcv_site* sites = jcv_diagram_get_sites(&vc.diagram);
+        for (int i = 0; i < vc.diagram.numsites; ++i)
+        {
+            const jcv_site* site = &sites[i];
+
+            srand((unsigned int)site->index); // for generating colors for the triangles
+
+            unsigned char color_tri[3];
+            unsigned char basecolor = 120;
+            color_tri[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+            color_tri[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+            color_tri[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+
+            jcv_point s = remap(&site->p, &vc.diagram.min, &vc.diagram.max, &dimensions);
+
+            const jcv_graphedge* e = site->edges;
+            while (e)
+            {
+                jcv_point p0 = remap(&e->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+                jcv_point p1 = remap(&e->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+
+                draw_triangle(&s, &p0, &p1, image, width, height, 3, color_tri);
+                e = e->next;
+            }
+        }
 
         // If all you need are the edges
         const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
         int edgecount = 1;
         std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
         unsigned char color_red[] = { 255, 0, 0 };
-        unsigned char color_blue[] = { 0, 0, 255 };
+        unsigned char color_blue[] = { 75, 75, 230 };
         unsigned char color_green[] = { 0, 255, 0 };
         unsigned char color_white[] = { 255, 255, 255 };
+        unsigned char color_orange[] = { 255, 153, 51 };
         unsigned char color_yellow[] = { 250, 255, 0 };
         unsigned char color_cyan[] = { 0, 255, 255 };
         unsigned char color_purple[] = { 255, 0, 255 };
-        std::vector<unsigned char*> colors = { color_red, color_blue, color_green, color_white, color_yellow, color_cyan, color_purple };
+        unsigned char color_lightpurple[] = { 178, 102, 255 };
+        std::vector<unsigned char*> colors = { color_blue, color_orange, color_white, color_yellow, color_cyan, color_purple, color_lightpurple };
 
         while (edge)
         {
@@ -668,18 +733,20 @@ void runactualgeos()
             edgecount++;
         }
 
-        end = std::chrono::high_resolution_clock::now();
+        /*end = std::chrono::high_resolution_clock::now();
         elapsed = end - start;
         std::cout << "Elapsed time -- get edge: " << elapsed.count() << " ms" << std::endl;
 
-        start = std::chrono::high_resolution_clock::now();
+        start = std::chrono::high_resolution_clock::now();*/
 
         auto filteredCenterlines = filterCenterlines(edge_lines, cgal_bdry, lanelines);
-        std::cout << "Number of centerlines: " << filteredCenterlines.size() << std::endl;
+        //std::cout << "Number of centerlines: " << filteredCenterlines.size() << std::endl;
 
-        end = std::chrono::high_resolution_clock::now();
-        elapsed = end - start;
-        std::cout << "Elapsed time -- rtree: " << elapsed.count() << " ms" << std::endl;
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = end - start;
+        std::cout << " -------- Elapsed time: " << elapsed.count() << " ms" << std::endl;
+        totaltime += elapsed.count();
+        std::cout << "avg time: " << totaltime / (count + 1) << " ms" << std::endl;
 
         int cor = 0;
         for (const auto& seg : filteredCenterlines) {
@@ -692,6 +759,17 @@ void runactualgeos()
                 draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color);
 			}
 			cor++;
+        }
+
+        jcv_delauney_iter delauney;
+        jcv_delauney_begin(&vc.diagram, &delauney);
+        jcv_delauney_edge delauney_edge;
+        unsigned char color_delauney[] = { 64, 64, 255 };
+        while (jcv_delauney_next(&delauney, &delauney_edge))
+        {
+            jcv_point p0 = remap(&delauney_edge.pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            jcv_point p1 = remap(&delauney_edge.pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            draw_line((int)p0.x, (int)p0.y, (int)p1.x, (int)p1.y, image, width, height, 3, color_delauney);
         }
         
 
@@ -726,7 +804,8 @@ void runactualgeos()
         }
 
         char path[512];
-        sprintf_s(path, "out%d.png", count);
+        sprintf_s(path, "img/out%d.png", count);
+        //sprintf_s(path, "out%d.png", count);
 
         stbi_write_png(path, width, height, 3, image, stride);
         std::cout << "done " << path << std::endl;
