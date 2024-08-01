@@ -554,38 +554,38 @@ std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segment
 //    free(image);
 //}
 
-void testing() {
-    // Initialize the GEOS library
-    geos::geom::GeometryFactory::Ptr factory = geos::geom::GeometryFactory::create();
-
-    // Example vector of vector of jcv_point for demonstration purposes
-    std::vector<std::vector<jcv_point>> lines = {
-        {{74.151,-13.1434}, {74.4412,-13.2563}},
-        {{74.4412,-13.2563}, {75.11,-13.3341}},
-        {{75.11,-13.3341}, {75.4286,-13.4584}},
-        {{75.4286,-13.4584}, {76.067,-13.5327}, {76.4145,-13.6692}},
-        {{86.8501,-15.9683}, {87.244,-16.132}},
-        {{87.244,-16.132}, {87.8278,-16.1999}},
-        {{87.8278,-16.1999}, {88.2279,-16.3668}, {88.8051,-16.4339}, {89.2115,-16.6037}, {89.7823,-16.6701}},
-        {{89.7823,-16.6701}, {90.1951,-16.843}}
-        
-    };
-
-    // Create a MultiLineString from the vector of lines
-    std::unique_ptr<geos::geom::MultiLineString> multiLine = makeMultiLineString(lines, factory.get());
-
-    // Use LineMerger to merge the MultiLineString
-    geos::operation::linemerge::LineMerger lineMerger;
-    lineMerger.add(multiLine.get());
-
-    // Get the merged result
-    auto merged(lineMerger.getMergedLineStrings());
-
-    // Print the result (for demonstration purposes)
-    for (const auto& line : merged) {
-		std::cout << line->toString() << std::endl;
-	}
-}
+//void testing() {
+//    // Initialize the GEOS library
+//    geos::geom::GeometryFactory::Ptr factory = geos::geom::GeometryFactory::create();
+//
+//    // Example vector of vector of jcv_point for demonstration purposes
+//    std::vector<std::vector<jcv_point>> lines = {
+//        {{74.151,-13.1434}, {74.4412,-13.2563}},
+//        {{74.4412,-13.2563}, {75.11,-13.3341}},
+//        {{75.11,-13.3341}, {75.4286,-13.4584}},
+//        {{75.4286,-13.4584}, {76.067,-13.5327}, {76.4145,-13.6692}},
+//        {{86.8501,-15.9683}, {87.244,-16.132}},
+//        {{87.244,-16.132}, {87.8278,-16.1999}},
+//        {{87.8278,-16.1999}, {88.2279,-16.3668}, {88.8051,-16.4339}, {89.2115,-16.6037}, {89.7823,-16.6701}},
+//        {{89.7823,-16.6701}, {90.1951,-16.843}}
+//        
+//    };
+//
+//    // Create a MultiLineString from the vector of lines
+//    std::unique_ptr<geos::geom::MultiLineString> multiLine = makeMultiLineString(lines, factory.get());
+//
+//    // Use LineMerger to merge the MultiLineString
+//    geos::operation::linemerge::LineMerger lineMerger;
+//    lineMerger.add(multiLine.get());
+//
+//    // Get the merged result
+//    auto merged(lineMerger.getMergedLineStrings());
+//
+//    // Print the result (for demonstration purposes)
+//    for (const auto& line : merged) {
+//		std::cout << line->toString() << std::endl;
+//	}
+//}
 
 // Function to convert PointDB to jcv_point
 inline jcv_point convertPointDBToJcvPoint(const PointDB& point) {
@@ -627,7 +627,7 @@ void runactualgeos()
         std::vector<std::vector<PointDB>> lanes;
         for (const auto& inlane : inlanes) {
             std::vector<PointDB> line;
-            for (uint32_t i = 0; i < inlane.size(); i += 5) {
+            for (uint32_t i = 0; i < inlane.size(); i += 1) {
                 line.push_back(inlane[i]);
             }
             lanes.push_back(line);
@@ -685,31 +685,31 @@ void runactualgeos()
 
         start = std::chrono::high_resolution_clock::now();*/
 
-        const jcv_site* sites = jcv_diagram_get_sites(&vc.diagram);
-        for (int i = 0; i < vc.diagram.numsites; ++i)
-        {
-            const jcv_site* site = &sites[i];
+        //const jcv_site* sites = jcv_diagram_get_sites(&vc.diagram);
+        //for (int i = 0; i < vc.diagram.numsites; ++i)
+        //{
+        //    const jcv_site* site = &sites[i];
 
-            srand((unsigned int)site->index); // for generating colors for the triangles
+        //    srand((unsigned int)site->index); // for generating colors for the triangles
 
-            unsigned char color_tri[3];
-            unsigned char basecolor = 120;
-            color_tri[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-            color_tri[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-            color_tri[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+        //    unsigned char color_tri[3];
+        //    unsigned char basecolor = 120;
+        //    color_tri[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+        //    color_tri[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+        //    color_tri[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
 
-            jcv_point s = remap(&site->p, &vc.diagram.min, &vc.diagram.max, &dimensions);
+        //    jcv_point s = remap(&site->p, &vc.diagram.min, &vc.diagram.max, &dimensions);
 
-            const jcv_graphedge* e = site->edges;
-            while (e)
-            {
-                jcv_point p0 = remap(&e->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
-                jcv_point p1 = remap(&e->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+        //    const jcv_graphedge* e = site->edges;
+        //    while (e)
+        //    {
+        //        jcv_point p0 = remap(&e->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+        //        jcv_point p1 = remap(&e->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
 
-                draw_triangle(&s, &p0, &p1, image, width, height, 3, color_tri);
-                e = e->next;
-            }
-        }
+        //        draw_triangle(&s, &p0, &p1, image, width, height, 3, color_tri);
+        //        e = e->next;
+        //    }
+        //}
 
         // If all you need are the edges
         const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
@@ -761,7 +761,7 @@ void runactualgeos()
 			cor++;
         }
 
-        jcv_delauney_iter delauney;
+        /*jcv_delauney_iter delauney;
         jcv_delauney_begin(&vc.diagram, &delauney);
         jcv_delauney_edge delauney_edge;
         unsigned char color_delauney[] = { 64, 64, 255 };
@@ -770,7 +770,7 @@ void runactualgeos()
             jcv_point p0 = remap(&delauney_edge.pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
             jcv_point p1 = remap(&delauney_edge.pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
             draw_line((int)p0.x, (int)p0.y, (int)p1.x, (int)p1.y, image, width, height, 3, color_delauney);
-        }
+        }*/
         
 
 
@@ -816,6 +816,10 @@ void runactualgeos()
         count++;
         break;
     }
+
+}
+
+void testing() {
 
 }
 

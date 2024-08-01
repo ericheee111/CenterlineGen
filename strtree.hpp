@@ -111,7 +111,7 @@ std::vector<std::vector<jcv_point>> filterCenterlines(
     auto start = std::chrono::high_resolution_clock().now();
     auto visitor = [&queryResult, &boundaryPolygon, &lanelines](Geometry* geom) {
         if (geom->getEnvelope()->intersects(boundaryPolygon)) {
-            if (lanelines.get()->distance(geom) >= 1.4) {
+            if (lanelines.get()->distance(geom) >= 1.25) {
                 queryResult.push_back(geom);
             }
 
