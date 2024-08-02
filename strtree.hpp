@@ -14,6 +14,8 @@
 #include <geos/geom/GeometryFactory.h>
 #include <geos/geom/LineString.h>
 #include <geos/operation/linemerge/LineMerger.h>
+#include <geos/operation/overlay/OverlayOp.h>
+#include <geos/operation/distance/DistanceOp.h>
 #include <iostream>
 #include <geos/index/strtree/STRtree.h>
 #include <chrono>
@@ -23,6 +25,8 @@
 using namespace geos::geom;
 using namespace geos::index::strtree;
 using namespace geos::operation::linemerge;
+using namespace geos::operation::overlay;
+using namespace geos::operation::distance;
 
 // Function to convert jcv_point to GEOS Coordinate
 Coordinate toCoordinate(const jcv_point& point) {
@@ -77,6 +81,35 @@ void savetofile(std::vector<std::vector<jcv_point>> lines) {
 
     file.close();
 }
+
+std::vector<std::unique_ptr<Geometry>> createGridCells(const Geometry* boundary, int gridSize, const GeometryFactory* factory) {
+    std::vector<std::unique_ptr<Geometry>> gridCells;
+    const Envelope* env = boundary->getEnvelopeInternal();
+    double minX = env->getMinX();
+    double minY = env->getMinY();
+    double maxX = env->getMaxX();
+    double maxY = env->getMaxY();
+    double cellWidth = (maxX - minX) / gridSize;
+    double cellHeight = (maxY - minY) / gridSize;
+
+    for (int i = 0; i < gridSize; ++i) {
+        for (int j = 0; j < gridSize; ++j) {
+            double x1 = minX + i * cellWidth;
+            double y1 = minY + j * cellHeight;
+            double x2 = x1 + cellWidth;
+            double y2 = y1 + cellHeight;
+            Envelope cellEnv(x1, x2, y1, y2);
+            std::unique_ptr<Geometry> cellPolygon(factory->toGeometry(&cellEnv));
+            std::unique_ptr<Geometry> clippedPolygon(OverlayOp::overlayOp(cellPolygon.get(), boundary, OverlayOp::OpCode::opINTERSECTION));
+            if (!clippedPolygon->isEmpty()) {
+                gridCells.push_back(std::move(clippedPolygon));
+            }
+        }
+    }
+
+    return gridCells;
+}
+
 
 // Main function to filter centerlines based on boundary
 std::vector<std::vector<jcv_point>> filterCenterlines(

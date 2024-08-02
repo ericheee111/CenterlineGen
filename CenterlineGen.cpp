@@ -57,6 +57,11 @@
 #include <CGAL/convex_hull_2.h>
 #include <CGAL/Simple_cartesian.h>
 
+#include <geos/io/WKTReader.h>
+#include <geos/io/WKTWriter.h>
+#include <cassert>
+
+
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> bst_point;
 typedef boost::geometry::model::segment<bst_point> bst_segment;
@@ -819,9 +824,95 @@ void runactualgeos()
 
 }
 
-void testing() {
+void drawGridCells(const std::vector<std::unique_ptr<Geometry>>& gridCells, unsigned char* image, int width, int height, int nchannels, const jcv_point dimension) {
+    unsigned char color[] = { 255, 0, 0 }; // Red color for grid cells
 
+    for (const auto& cell : gridCells) {
+        const Envelope* env = cell->getEnvelopeInternal();
+        int x1 = static_cast<int>(env->getMinX());
+        int y1 = static_cast<int>(env->getMinY());
+        int x2 = static_cast<int>(env->getMaxX());
+        int y2 = static_cast<int>(env->getMaxY());
+
+        jcv_point p0 = { x1, y1 };
+        jcv_point p1 = { x2, y2 };
+        jcv_point minn = { 0, 0 };
+        jcv_point maxx = { 10, 10 };
+
+        auto px = remap(&p0, &minn, &maxx, &dimension);
+
+
+        // Draw the boundary of the grid cell
+        for (int x = x1; x <= x2; ++x) {
+            plot(x, y1, image, width, height, nchannels, color);
+            plot(x, y2, image, width, height, nchannels, color);
+        }
+        for (int y = y1; y <= y2; ++y) {
+            plot(x1, y, image, width, height, nchannels, color);
+            plot(x2, y, image, width, height, nchannels, color);
+        }
+    }
 }
+
+//void testing() {
+//    geos::io::WKTReader reader;
+//    geos::io::WKTWriter writer;
+//    GeometryFactory::Ptr factory = GeometryFactory::create();
+//    std::unique_ptr<Geometry> boundary(reader.read("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))")); // Simple square boundary
+//
+//    int gridSize = 5; // Define the size of the grid
+//    std::vector<std::unique_ptr<Geometry>> gridCells = createGridCells(boundary.get(), gridSize, factory.get());
+//
+//    // Print the grid cells
+//    for (const auto& cell : gridCells) {
+//        std::cout << writer.write(cell.get()) << std::endl;
+//    }
+//
+//    // Basic assertions
+//    assert(!gridCells.empty()); // Ensure grid cells are created
+//    assert(gridCells.size() == gridSize * gridSize); // Ensure correct number of grid cells
+//
+//    // Additional checks
+//    for (const auto& cell : gridCells) {
+//        assert(boundary->contains(cell.get())); // Each cell should be within the boundary
+//    }
+//
+//    int width = 512;
+//    int height = 512;
+//    size_t imagesize = (size_t)(width * height * 3);
+//    unsigned char* image = (unsigned char*)malloc(imagesize);
+//    memset(image, 0, imagesize);
+//
+//    jcv_point dimensions;
+//    dimensions.x = (jcv_real)width;
+//    dimensions.y = (jcv_real)height;
+//
+//    // Draw the grid cells on the image
+//    drawGridCells(gridCells, image, width, height, 3);
+//
+//    // flip image
+//    int stride = width * 3;
+//    uint8_t* row = (uint8_t*)malloc((size_t)stride);
+//    for (int y = 0; y < height / 2; ++y)
+//    {
+//        memcpy(row, &image[y * stride], (size_t)stride);
+//        memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
+//        memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
+//    }
+//
+//    char path[512];
+//    sprintf_s(path, "testing.png");
+//    //sprintf_s(path, "out%d.png", count);
+//
+//    stbi_write_png(path, width, height, 3, image, stride);
+//    std::cout << "done " << path << std::endl;
+//
+//
+//
+//    free(image);
+//
+//    std::cout << "All tests passed!" << std::endl;
+//}
 
 int main() {
     //runsampledata();
