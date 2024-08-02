@@ -735,6 +735,7 @@ void runactualgeos()
         {
             edge_lines.push_back(make_pair(edge->pos[0], edge->pos[1]));
             edge = jcv_diagram_get_next_edge(edge);
+            
             edgecount++;
         }
 
