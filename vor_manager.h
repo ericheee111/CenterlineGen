@@ -50,6 +50,7 @@ struct LineSegmentHash {
 
 class edge_info {
 public:
+    edge_info() : edge(nullptr), site1(nullptr), site2(nullptr) {}
     edge_info(jcv_edge* edge, jcv_site* site1, jcv_site* site2) : edge(edge), site1(site1), site2(site2) {}
 	jcv_edge* edge;
 	jcv_site* site1;

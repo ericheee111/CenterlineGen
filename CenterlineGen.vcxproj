@@ -158,6 +158,7 @@
     <ClCompile Include="stb_wrapper.c" />
     <ClCompile Include="testPolynomialRegression.cpp" />
     <ClCompile Include="voronoi.cpp" />
+    <ClCompile Include="vor_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DBSCAN.h" />
@@ -168,6 +169,7 @@
     <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="strtree.hpp" />
     <ClInclude Include="voronoi.h" />
+    <ClInclude Include="vor_manager.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CenterlineGen.rc" />

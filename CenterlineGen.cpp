@@ -15,7 +15,7 @@
 
 #define JC_VORONOI_IMPLEMENTATION
 #define JC_VORONOI_CLIP_IMPLEMENTATION
-#define OUTPIC
+//#define OUTPIC
 
 #include "DBSCAN.h"
 #include "jc_voronoi.h"
@@ -674,7 +674,7 @@ void runactualgeos()
 
         std::vector<CGAL_Segment> segs;
         alpha_edges(A, std::back_inserter(segs));
-        auto cgal_bdry = segments_to_path(segs);
+        auto alpha_bdry = segments_to_path(segs);
       
         /*end = std::chrono::high_resolution_clock::now();
         elapsed = end - start;
@@ -745,7 +745,7 @@ void runactualgeos()
 
         start = std::chrono::high_resolution_clock::now();*/
 
-        auto filteredCenterlines = filterCenterlines(edge_lines, cgal_bdry, lanelines);
+        auto filteredCenterlines = filterCenterlines(edge_lines, alpha_bdry, lanelines);
         //std::cout << "Number of centerlines: " << filteredCenterlines.size() << std::endl;
 
         auto end = std::chrono::high_resolution_clock::now();
@@ -792,10 +792,210 @@ void runactualgeos()
             }
         }
 
-        for (uint32_t i = 1; i < cgal_bdry.size(); i++)
+        for (uint32_t i = 1; i < alpha_bdry.size(); i++)
         {
-            auto curr = remap(&cgal_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
-            auto prev = remap(&cgal_bdry[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            auto curr = remap(&alpha_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            auto prev = remap(&alpha_bdry[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_green);
+        }
+
+        // flip image
+        int stride = width * 3;
+        uint8_t* row = (uint8_t*)malloc((size_t)stride);
+        for (int y = 0; y < height / 2; ++y)
+        {
+            memcpy(row, &image[y * stride], (size_t)stride);
+            memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
+            memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
+        }
+
+        char path[512];
+        sprintf_s(path, "img/out%d.png", count);
+        //sprintf_s(path, "out%d.png", count);
+
+        stbi_write_png(path, width, height, 3, image, stride);
+        std::cout << "done " << path << std::endl;
+
+
+
+        free(image);
+        count++;
+        //break;
+    }
+
+}
+
+double dotProduct(const jcv_point& p1, const jcv_point& p2) {
+    return p1.x * p2.x + p1.y * p2.y;
+}
+
+// Function to calculate the magnitude squared of a point
+double magnitudeSquared(const jcv_point& p) {
+    return p.x * p.x + p.y * p.y;
+}
+
+// Function to calculate the perpendicular distance from a point to a line segment
+double perpendicularDistance(const jcv_point& start, const jcv_point& end, const jcv_point& point) {
+    jcv_point lineVec = { end.x - start.x, end.y - start.y };
+    jcv_point pointVec = { point.x - start.x, point.y - start.y };
+
+    double lineLenSq = magnitudeSquared(lineVec);
+    double t = dotProduct(pointVec, lineVec) / lineLenSq;
+
+    // Clamp t to the range [0, 1]
+    t = std::max(0.0, std::min(1.0, t));
+
+    jcv_point projection = { start.x + t * lineVec.x, start.y + t * lineVec.y };
+    jcv_point distVec = { point.x - projection.x, point.y - projection.y };
+
+    return std::sqrt(magnitudeSquared(distVec));
+}
+
+void runactualvordist()
+{
+    std::string filename = "lanes.csv";
+    std::map<long long, std::vector<std::vector<PointDB>>> lanedata = readActualCSV(filename);
+    std::cout << "Number of timestamps: " << lanedata.size() << std::endl;
+    int count = 0;
+    double totaltime = 0;
+    for (const auto& entry : lanedata) {
+        std::vector<std::vector<PointDB>> inlanes = entry.second; // all lanes in one timestemp
+
+        std::vector<std::vector<PointDB>> lanes;
+        for (const auto& inlane : inlanes) {
+            std::vector<PointDB> line;
+            for (uint32_t i = 0; i < inlane.size(); i += 1) {
+                line.push_back(inlane[i]);
+            }
+            lanes.push_back(line);
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lanes);
+
+        auto lanelines = pointDBtoJCV(lanes);
+
+        vorcon vc;
+        int width = 512;
+        int height = 512;
+        size_t imagesize = (size_t)(width * height * 3);
+        unsigned char* image = (unsigned char*)malloc(imagesize);
+        memset(image, 0, imagesize);
+
+        jcv_point dimensions;
+        dimensions.x = (jcv_real)width;
+        dimensions.y = (jcv_real)height;
+
+        std::vector<CGAL_Point> points = convert_to_cgal_points(lanes, vc);
+        vc.rect = { bounding_box[0].first, bounding_box[0].second, bounding_box[1].first, bounding_box[1].second };
+        memset(&vc.diagram, 0, sizeof(jcv_diagram));
+
+        Alpha_shape_2 A(points.begin(), points.end(),
+            FT(60), // 11 - 50+
+            Alpha_shape_2::GENERAL);
+
+        std::vector<CGAL_Segment> segs;
+        alpha_edges(A, std::back_inserter(segs));
+        auto alpha_bdry = segments_to_path(segs);
+
+        /*jcv_clipping_polygon clpoly;
+        jcv_clipper* clipper = 0;
+        clpoly.points = alpha_bdry.data();
+        clpoly.num_points = alpha_bdry.size();
+
+        jcv_clipper polyclipper;
+        polyclipper.test_fn = jcv_clip_polygon_test_point;
+        polyclipper.clip_fn = jcv_clip_polygon_clip_edge;
+        polyclipper.fill_fn = jcv_clip_polygon_fill_gaps;
+        polyclipper.ctx = &clpoly;
+
+        clipper = &polyclipper;*/
+
+        jcv_diagram_generate(vc.num_points, vc.points, &vc.rect, 0, &vc.diagram);        
+
+        // If all you need are the edges
+        const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
+        int edgecount = 1;
+        std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
+        unsigned char color_red[] = { 255, 0, 0 };
+        unsigned char color_blue[] = { 75, 75, 230 };
+        unsigned char color_green[] = { 0, 255, 0 };
+        unsigned char color_white[] = { 255, 255, 255 };
+        unsigned char color_orange[] = { 255, 153, 51 };
+        unsigned char color_yellow[] = { 250, 255, 0 };
+        unsigned char color_cyan[] = { 0, 255, 255 };
+        unsigned char color_purple[] = { 255, 0, 255 };
+        unsigned char color_lightpurple[] = { 178, 102, 255 };
+        std::vector<unsigned char*> colors = { color_blue, color_orange, color_white, color_yellow, color_cyan, color_purple, color_lightpurple };
+
+        while (edge)
+        {
+            auto site = edge->sites;
+            auto s0 = site[0];
+            auto s1 = site[1];
+            if (s0 == NULL || s1 == NULL) {
+                edge = jcv_diagram_get_next_edge(edge);
+                continue;
+            }
+            auto p0 = s0->p;
+            auto p1 = s1->p;
+            auto dist0 = perpendicularDistance(edge->pos[0], edge->pos[1], p0);
+            auto dist1 = perpendicularDistance(edge->pos[0], edge->pos[1], p1);
+            if (dist0 > 1.25 && dist1 > 1.25) {
+                edge_lines.push_back(make_pair(edge->pos[0], edge->pos[1]));
+            }
+            
+            edge = jcv_diagram_get_next_edge(edge);
+
+            edgecount++;
+        }
+
+        auto filteredCenterlines = filterCenterlinesByBoundary(edge_lines, alpha_bdry);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = end - start;
+        std::cout << " -------- Elapsed time: " << elapsed.count() << " ms" << std::endl;
+        totaltime += elapsed.count();
+        std::cout << "avg time: " << totaltime / (count + 1) << " ms" << std::endl;
+
+        int cor = 0;
+        /*for (const auto& seg : filteredCenterlines) {
+            auto color = colors[cor % 6];
+            for (int i = 1; i < seg.size(); i++) {
+                jcv_point p0 = remap(&seg[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+                jcv_point p1 = remap(&seg[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+
+                draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color);
+            }
+            cor++;
+        }*/
+        for (const auto& seg : edge_lines) {
+            auto color = colors[cor % 6];
+            jcv_point p0 = remap(&seg.first, &vc.diagram.min, &vc.diagram.max, &dimensions);
+            jcv_point p1 = remap(&seg.second, &vc.diagram.min, &vc.diagram.max, &dimensions);
+
+            draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color);
+            cor++;
+        }
+
+
+        /* ----------- draw lane ------------- */
+
+        // draw this frame lane lines
+        for (const auto& lane : lanes) {
+            jcv_point p0 = remap(&lane[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            for (const auto& point : lane) {
+                jcv_point p = remap(&point, &vc.diagram.min, &vc.diagram.max, &dimensions);
+                draw_line((double)p0.x, (double)p0.y, (double)p.x, (double)p.y, image, width, height, 3, color_red);
+                p0 = p;
+            }
+        }
+
+        for (uint32_t i = 1; i < alpha_bdry.size(); i++)
+        {
+            auto curr = remap(&alpha_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+            auto prev = remap(&alpha_bdry[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
             draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_green);
         }
 
@@ -825,101 +1025,68 @@ void runactualgeos()
 
 }
 
-void drawGridCells(const std::vector<std::unique_ptr<Geometry>>& gridCells, unsigned char* image, int width, int height, int nchannels, const jcv_point dimension) {
-    unsigned char color[] = { 255, 0, 0 }; // Red color for grid cells
+void testing() {
+    geos::io::WKTReader reader;
+    geos::io::WKTWriter writer;
+    GeometryFactory::Ptr factory = GeometryFactory::create();
+    std::unique_ptr<Geometry> boundary(reader.read("POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))")); // Simple square boundary
 
+    int gridSize = 10; // Define the size of the grid
+    std::vector<std::unique_ptr<Geometry>> gridCells = createGridCells(boundary.get(), gridSize, factory.get());
+
+    // Define lanelines
+    std::vector<std::unique_ptr<Geometry>> lanelines;
+    lanelines.push_back(std::unique_ptr<Geometry>(reader.read("LINESTRING (35 15, 45 45)")));
+    lanelines.push_back(std::unique_ptr<Geometry>(reader.read("LINESTRING (25 25, 35 35)")));
+
+    // Define centerlines
+    std::vector<std::unique_ptr<Geometry>> centerlines;
+    centerlines.push_back(std::unique_ptr<Geometry>(reader.read("LINESTRING (10 10, 20 20)")));
+    centerlines.push_back(std::unique_ptr<Geometry>(reader.read("LINESTRING (20 20, 30 30)")));
+
+    TemplateSTRtree<const Geometry*> gridStrTree;
+    TemplateSTRtree<const Geometry*> laneStrTree;
     for (const auto& cell : gridCells) {
-        const Envelope* env = cell->getEnvelopeInternal();
-        int x1 = static_cast<int>(env->getMinX());
-        int y1 = static_cast<int>(env->getMinY());
-        int x2 = static_cast<int>(env->getMaxX());
-        int y2 = static_cast<int>(env->getMaxY());
+        gridStrTree.insert(cell->getEnvelopeInternal(), cell.get());
+    }
 
-        jcv_point p0 = { x1, y1 };
-        jcv_point p1 = { x2, y2 };
-        jcv_point minn = { 0, 0 };
-        jcv_point maxx = { 10, 10 };
+    // Split and index lanelines
+    splitAndIndexLanelines(gridCells, lanelines, laneStrTree);
 
-        auto px = remap(&p0, &minn, &maxx, &dimension);
+    // Output the grid cells
+    std::cout << "Grid Cells:" << std::endl;
+    for (const auto& cell : gridCells) {
+        std::cout << writer.write(cell.get()) << std::endl;
+    }
 
+    // Example point query
+    std::unique_ptr<Point> point(factory->createPoint(Coordinate(15.0, 15.0))); // Example point coordinates
+    if (isPointInBoundary(point.get(), gridStrTree)) {
+        std::cout << "Point is within the boundary." << std::endl;
+    }
+    else {
+        std::cout << "Point is outside the boundary." << std::endl;
+    }
 
-        // Draw the boundary of the grid cell
-        for (int x = x1; x <= x2; ++x) {
-            plot(x, y1, image, width, height, nchannels, color);
-            plot(x, y2, image, width, height, nchannels, color);
+    // Check if centerlines are too close to lanelines
+    double minDistance = 5.0; // Minimum distance threshold
+    std::cout << "Centerline Proximity Check:" << std::endl;
+    for (const auto& centerline : centerlines) {
+        if (isCenterlineTooCloseToLanelines(centerline.get(), laneStrTree, minDistance)) {
+            std::cout << "A centerline is too close to a laneline." << std::endl;
         }
-        for (int y = y1; y <= y2; ++y) {
-            plot(x1, y, image, width, height, nchannels, color);
-            plot(x2, y, image, width, height, nchannels, color);
+        else {
+            std::cout << "A centerline is at a safe distance from lanelines." << std::endl;
         }
     }
 }
-
-//void testing() {
-//    geos::io::WKTReader reader;
-//    geos::io::WKTWriter writer;
-//    GeometryFactory::Ptr factory = GeometryFactory::create();
-//    std::unique_ptr<Geometry> boundary(reader.read("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))")); // Simple square boundary
-//
-//    int gridSize = 5; // Define the size of the grid
-//    std::vector<std::unique_ptr<Geometry>> gridCells = createGridCells(boundary.get(), gridSize, factory.get());
-//
-//    // Print the grid cells
-//    for (const auto& cell : gridCells) {
-//        std::cout << writer.write(cell.get()) << std::endl;
-//    }
-//
-//    // Basic assertions
-//    assert(!gridCells.empty()); // Ensure grid cells are created
-//    assert(gridCells.size() == gridSize * gridSize); // Ensure correct number of grid cells
-//
-//    // Additional checks
-//    for (const auto& cell : gridCells) {
-//        assert(boundary->contains(cell.get())); // Each cell should be within the boundary
-//    }
-//
-//    int width = 512;
-//    int height = 512;
-//    size_t imagesize = (size_t)(width * height * 3);
-//    unsigned char* image = (unsigned char*)malloc(imagesize);
-//    memset(image, 0, imagesize);
-//
-//    jcv_point dimensions;
-//    dimensions.x = (jcv_real)width;
-//    dimensions.y = (jcv_real)height;
-//
-//    // Draw the grid cells on the image
-//    drawGridCells(gridCells, image, width, height, 3);
-//
-//    // flip image
-//    int stride = width * 3;
-//    uint8_t* row = (uint8_t*)malloc((size_t)stride);
-//    for (int y = 0; y < height / 2; ++y)
-//    {
-//        memcpy(row, &image[y * stride], (size_t)stride);
-//        memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
-//        memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
-//    }
-//
-//    char path[512];
-//    sprintf_s(path, "testing.png");
-//    //sprintf_s(path, "out%d.png", count);
-//
-//    stbi_write_png(path, width, height, 3, image, stride);
-//    std::cout << "done " << path << std::endl;
-//
-//
-//
-//    free(image);
-//
-//    std::cout << "All tests passed!" << std::endl;
-//}
 
 int main() {
     //runsampledata();
     //runactualdata();
     //testing();
-    runactualgeos();
+    //runactualgeos();
+    runactualvordist();
 	return 0;
 }               
 
