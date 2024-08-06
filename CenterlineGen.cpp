@@ -92,10 +92,10 @@ typedef struct VoronoiContext_ {
     jcv_clipper* clipper_ptr;
 } vorcon;
 
-std::map<long long, std::vector<std::vector<PointDB>>> readActualCSV(const std::string& filename) {
+std::map<long long, std::vector<std::vector<jcv_point>>> readActualCSV(const std::string& filename) {
     std::cout << "read file" << std::endl;
     std::ifstream file(filename);
-    std::map<long long, std::vector<std::vector<PointDB>>> data;
+    std::map<long long, std::vector<std::vector<jcv_point>>> data;
 
     if (!file.is_open()) {
         std::cerr << "Unable to open file" << std::endl;
@@ -110,7 +110,7 @@ std::map<long long, std::vector<std::vector<PointDB>>> readActualCSV(const std::
         std::string cell;
 
         long long timestamp;
-        std::vector<std::vector<PointDB>> lanes;
+        std::vector<std::vector<jcv_point>> lanes;
 
         try {
             // Read timestamp
@@ -121,14 +121,13 @@ std::map<long long, std::vector<std::vector<PointDB>>> readActualCSV(const std::
 
             // Read lane coordinates
             while (std::getline(ss, cell, ',')) {
-                std::vector<PointDB> lane;
+                std::vector<jcv_point> lane;
 
                 do {
-                    PointDB coordinate;
+                    jcv_point coordinate;
 
                     // Read x coordinate
                     coordinate.x = std::stod(cell);
-                    coordinate.clusterID = laneNumber;
 
                     // Check if next cell is available for y coordinate
                     if (!std::getline(ss, cell, ',')) break;
@@ -322,7 +321,7 @@ std::vector<std::pair<double, double>> findBoundingBox(const std::vector<PointDB
     return { {minX, minY}, {maxX, maxY} };
 }
 
-std::vector<std::pair<double, double>> findBoundingBox(const std::vector<std::vector<PointDB>>& lanes) {
+std::vector<std::pair<double, double>> findBoundingBox(const std::vector<std::vector<jcv_point>>& lanes) {
     // Initialize min and max values
     double minX = std::numeric_limits<double>::max();
     double maxX = std::numeric_limits<double>::min();
@@ -348,7 +347,7 @@ std::vector<std::pair<double, double>> findBoundingBox(const std::vector<std::ve
     return { {minX, minY}, {maxX, maxY} };
 }
 
-std::vector<CGAL_Point> convert_to_cgal_points(const std::vector<std::vector<PointDB>>& lane_lines, vorcon& vc) {
+std::vector<CGAL_Point> convert_to_cgal_points(const std::vector<std::vector<jcv_point>>& lane_lines, vorcon& vc) {
 	size_t num_points = 0;
 	for (const auto& line : lane_lines) {
 		num_points += line.size();
@@ -437,393 +436,216 @@ std::vector<jcv_point> segments_to_path(const std::vector<CGAL_Segment>& segment
     return path;
 }
 
-//void testing() {
-//    std::vector<std::pair<jcv_point, jcv_point>> centerlines11;
-//    std::vector<jcv_point> boundary11 = {
-//        {50, 50}, {250, 50}, {250, 250}, {50, 250}, {50, 50}
-//    };
+//void runactualgeos()
+//{
+//    std::string filename = "lanes.csv";
+//    std::map<long long, std::vector<std::vector<PointDB>>> lanedata = readActualCSV(filename);
+//    std::cout << "Number of timestamps: " << lanedata.size() << std::endl;
+//    int count = 0;
+//    uint32_t totaltime = 0;
+//    for (const auto& entry : lanedata) {
+//        /*if (count != 10) {
+//            count++;
+//            continue;
+//        }*/
+//        //std::cout << "Timestamp: " << entry.first << std::endl;
+//        std::vector<std::vector<PointDB>> inlanes = entry.second; // all lanes in one timestemp
 //
-//    std::vector<std::vector<jcv_point>> lanelines = {
-//        {{80, 50}, {80, 80}, {80, 120}, {80, 150}, {80, 250}},
-//        {{120, 50}, {120, 80}, {120, 120}, {120, 150}, {120, 250}},
-//        {{180, 50}, {180, 80}, {180, 120}, {180, 150}, {180, 250}}
-//    };
-//
-//    for (int i = 0; i < 50; ++i) {
-//        // Generate random points within the boundary
-//        jcv_point start = { rand() % (149 - 51 + 1) + 51, rand() % (149 - 51 + 1) + 51 };
-//        jcv_point end = { rand() % (149 - 51 + 1) + 51, rand() % (149 - 51 + 1) + 51 };
-//
-//        // Ensure the start point is not the same as the end point
-//        while (start.x == end.x && start.y == end.y) {
-//            end = { (double)(rand() % (149 - 51 + 1)) + 51, (double)(rand() % (149 - 51 + 1) + 51) };
+//        std::vector<std::vector<PointDB>> lanes;
+//        for (const auto& inlane : inlanes) {
+//            std::vector<PointDB> line;
+//            for (uint32_t i = 0; i < inlane.size(); i += 1) {
+//                line.push_back(inlane[i]);
+//            }
+//            lanes.push_back(line);
 //        }
 //
-//        centerlines11.push_back({ {start}, {end} });
-//    }
-//    for (int i = 0; i < 50; ++i) {
-//        // Generate random points within the boundary
-//        jcv_point start = { rand() % (75 - 30 + 1) + 30, rand() % (65 - 30 + 1) + 33 };
-//        jcv_point end = { rand() % (90 - 39 + 1) + 40, rand() % (110 - 87 + 1) + 87 };
-//        centerlines11.push_back({ {start}, {end} });
-//    }
+//        //std::cout << "Number of lanes: " << lanes.size() << std::endl;
 //
-//    for (int i = 0; i < 50; ++i) {
-//        // Generate random points within the boundary
-//        jcv_point start = { rand() % (250 - 200 + 1) + 200, rand() % (250 - 170 + 1) + 180 };
-//        jcv_point end = { rand() % (250 - 200 + 1) + 200, rand() % (250 - 170 + 1) + 180 };
-//        centerlines11.push_back({ {start}, {end} });
-//    }
+//        auto start = std::chrono::high_resolution_clock::now();
 //
-//    for (int i = 0; i < 50; ++i) {
-//        // Generate random points within the boundary
-//        jcv_point start = { rand() % (200 - 130 + 1) + 130, rand() % (190 - 120 + 1) + 120 };
-//        jcv_point end = { rand() % (200 - 130 + 1) + 130, rand() % (190 - 120 + 1) + 120 };
-//        centerlines11.push_back({ {start}, {end} });
-//    }
+//        std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lanes);
 //
+//        auto lanelines = pointDBtoJCV(lanes);
 //
-//    unsigned char color_red[] = { 255, 0, 0 };
-//    unsigned char color_blue[] = { 0, 0, 255 };
-//    unsigned char color_green[] = { 0, 255, 0 };
-//    int width = 256;
-//    int height = 256;
-//    size_t imagesize = (size_t)(width * height * 3);
-//    unsigned char* image = (unsigned char*)malloc(imagesize);
-//    memset(image, 0, imagesize);
-//    jcv_point dimensions;
-//    dimensions.x = (jcv_real)width;
-//    dimensions.y = (jcv_real)height;
+//        vorcon vc;
+//        int width = 512;
+//        int height = 512;
+//        size_t imagesize = (size_t)(width * height * 3);
+//        unsigned char* image = (unsigned char*)malloc(imagesize);
+//        memset(image, 0, imagesize);
 //
-//    for (int i = 1; i < boundary11.size(); i++) {
-//        jcv_point min = { 0,0 };
-//        jcv_point max = { 200, 200 };
-//        /*auto pt1 = remap(&boundary11[i], &min, &max, &dimensions);
-//        auto pt2 = remap(&boundary11[i - 1], &min, &max, &dimensions);*/
-//        auto pt1 = boundary11[i];
-//        auto pt2 = boundary11[i - 1];
-//        draw_line(pt1.x, pt1.y, pt2.x, pt2.y, image, width, height, 3, color_blue);
-//    }
+//        jcv_point dimensions;
+//        dimensions.x = (jcv_real)width;
+//        dimensions.y = (jcv_real)height;
 //
-//    for (auto& lane : lanelines) {
-//        for (int i = 1; i < lane.size(); i++) {
-//            auto pt1 = lane[i];
-//            auto pt2 = lane[i - 1];
-//            draw_line(pt1.x, pt1.y, pt2.x, pt2.y, image, width, height, 3, color_blue);
+//        std::vector<CGAL_Point> points = convert_to_cgal_points(lanes, vc);
+//        vc.rect = { bounding_box[0].first, bounding_box[0].second, bounding_box[1].first, bounding_box[1].second };
+//        memset(&vc.diagram, 0, sizeof(jcv_diagram));
+//
+//        /*auto end = std::chrono::high_resolution_clock::now();
+//
+//        std::chrono::duration<double, std::milli> elapsed = end - start;
+//        std::cout << "Elapsed time -- preprocess: " << elapsed.count() << " ms" << std::endl;*/
+//
+//        //start = std::chrono::high_resolution_clock::now();
+//
+//        Alpha_shape_2 A(points.begin(), points.end(),
+//            FT(60), // 11 - 50+
+//            Alpha_shape_2::GENERAL);
+//
+//        std::vector<CGAL_Segment> segs;
+//        alpha_edges(A, std::back_inserter(segs));
+//        auto alpha_bdry = segments_to_path(segs);
+//      
+//        /*end = std::chrono::high_resolution_clock::now();
+//        elapsed = end - start;
+//        std::cout << "Elapsed time -- alphashape: " << elapsed.count() << " ms" << std::endl;*/
+//
+//        //start = std::chrono::high_resolution_clock::now();
+//
+//        jcv_diagram_generate(vc.num_points, vc.points, &vc.rect, 0, &vc.diagram);
+//
+//        /*end = std::chrono::high_resolution_clock::now();
+//        elapsed = end - start;
+//        std::cout << "Elapsed time -- voronoi gen: " << elapsed.count() << " ms" << std::endl;
+//
+//        start = std::chrono::high_resolution_clock::now();*/
+//
+//        //const jcv_site* sites = jcv_diagram_get_sites(&vc.diagram);
+//        //for (int i = 0; i < vc.diagram.numsites; ++i)
+//        //{
+//        //    const jcv_site* site = &sites[i];
+//
+//        //    srand((unsigned int)site->index); // for generating colors for the triangles
+//
+//        //    unsigned char color_tri[3];
+//        //    unsigned char basecolor = 120;
+//        //    color_tri[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+//        //    color_tri[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+//        //    color_tri[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+//
+//        //    jcv_point s = remap(&site->p, &vc.diagram.min, &vc.diagram.max, &dimensions);
+//
+//        //    const jcv_graphedge* e = site->edges;
+//        //    while (e)
+//        //    {
+//        //        jcv_point p0 = remap(&e->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//        //        jcv_point p1 = remap(&e->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//
+//        //        draw_triangle(&s, &p0, &p1, image, width, height, 3, color_tri);
+//        //        e = e->next;
+//        //    }
+//        //}
+//
+//        // If all you need are the edges
+//        const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
+//        int edgecount = 1;
+//        std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
+//        unsigned char color_red[] = { 255, 0, 0 };
+//        unsigned char color_blue[] = { 75, 75, 230 };
+//        unsigned char color_green[] = { 0, 255, 0 };
+//        unsigned char color_white[] = { 255, 255, 255 };
+//        unsigned char color_orange[] = { 255, 153, 51 };
+//        unsigned char color_yellow[] = { 250, 255, 0 };
+//        unsigned char color_cyan[] = { 0, 255, 255 };
+//        unsigned char color_purple[] = { 255, 0, 255 };
+//        unsigned char color_lightpurple[] = { 178, 102, 255 };
+//        std::vector<unsigned char*> colors = { color_blue, color_orange, color_white, color_yellow, color_cyan, color_purple, color_lightpurple };
+//
+//        while (edge)
+//        {
+//            edge_lines.push_back(make_pair(edge->pos[0], edge->pos[1]));
+//            edge = jcv_diagram_get_next_edge(edge);
+//            
+//            edgecount++;
 //        }
-//    }
 //
+//        /*end = std::chrono::high_resolution_clock::now();
+//        elapsed = end - start;
+//        std::cout << "Elapsed time -- get edge: " << elapsed.count() << " ms" << std::endl;
 //
-//    for (int i = 0; i < centerlines11.size(); i++) {
-//        jcv_point min = { 0,0 };
-//        jcv_point max = { 200, 200 };
-//        /*auto pt1 = remap(&centerlines11[i].first, &min, &max, &dimensions);
-//        auto pt2 = remap(&centerlines11[i].second, &min, &max, &dimensions);*/
-//        auto pt1 = centerlines11[i].first;
-//        auto pt2 = centerlines11[i].second;
-//        draw_line(pt1.x, pt1.y, pt2.x, pt2.y, image, width, height, 3, color_red);
-//    }
+//        start = std::chrono::high_resolution_clock::now();*/
 //
+//        auto filteredCenterlines = filterCenterlines(edge_lines, alpha_bdry, lanelines);
+//        //std::cout << "Number of centerlines: " << filteredCenterlines.size() << std::endl;
+//
+//        auto end = std::chrono::high_resolution_clock::now();
+//        std::chrono::duration<double, std::milli> elapsed = end - start;
+//        std::cout << " -------- Elapsed time: " << elapsed.count() << " ms" << std::endl;
+//        totaltime += elapsed.count();
+//        std::cout << "avg time: " << totaltime / (count + 1) << " ms" << std::endl;
+//
+//        int cor = 0;
+//        for (const auto& seg : filteredCenterlines) {
+//            //std::cout << "ctl size: " << seg.size() << std::endl;
+//            auto color = colors[cor % 6];
+//            for (int i = 1; i < seg.size(); i++) {
+//				jcv_point p0 = remap(&seg[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//				jcv_point p1 = remap(&seg[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//
+//                draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color);
+//			}
+//			cor++;
+//        }
+//
+//        /*jcv_delauney_iter delauney;
+//        jcv_delauney_begin(&vc.diagram, &delauney);
+//        jcv_delauney_edge delauney_edge;
+//        unsigned char color_delauney[] = { 64, 64, 255 };
+//        while (jcv_delauney_next(&delauney, &delauney_edge))
+//        {
+//            jcv_point p0 = remap(&delauney_edge.pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//            jcv_point p1 = remap(&delauney_edge.pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//            draw_line((int)p0.x, (int)p0.y, (int)p1.x, (int)p1.y, image, width, height, 3, color_delauney);
+//        }*/
 //        
-//    auto filteredCenterlines = filterCenterlines(centerlines11, boundary11, lanelines);
-//        
-//    for (const auto& line : filteredCenterlines) {
-//        //std::cout << "Filtered line: ((" << line.first.x << ", " << line.first.y << "), (" << line.second.x << ", " << line.second.y << "))\n";
-//        jcv_point min = { 0,0 };
-//        jcv_point max = { 200, 200 };
-//        /*auto pt1 = remap(&line.first, &min, &max, &dimensions);
-//        auto pt2 = remap(&line.second, &min, &max, &dimensions);*/
-//        auto pt1 = line.first;
-//        auto pt2 = line.second;
 //
-//        draw_line(pt1.x, pt1.y, pt2.x, pt2.y, image, width, height, 3, color_green);
+//
+//        /* ----------- draw lane ------------- */
+//
+//        // draw this frame lane lines
+//        for (const auto& lane : lanes) {
+//            jcv_point p0 = remap(&lane[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//            for (const auto& point : lane) {
+//                jcv_point p = remap(&point, &vc.diagram.min, &vc.diagram.max, &dimensions);
+//                draw_line((double)p0.x, (double)p0.y, (double)p.x, (double)p.y, image, width, height, 3, color_red);
+//                p0 = p;
+//            }
+//        }
+//
+//        for (uint32_t i = 1; i < alpha_bdry.size(); i++)
+//        {
+//            auto curr = remap(&alpha_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//            auto prev = remap(&alpha_bdry[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
+//            draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_green);
+//        }
+//
+//        // flip image
+//        int stride = width * 3;
+//        uint8_t* row = (uint8_t*)malloc((size_t)stride);
+//        for (int y = 0; y < height / 2; ++y)
+//        {
+//            memcpy(row, &image[y * stride], (size_t)stride);
+//            memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
+//            memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
+//        }
+//
+//        char path[512];
+//        sprintf_s(path, "img/out%d.png", count);
+//        //sprintf_s(path, "out%d.png", count);
+//
+//        stbi_write_png(path, width, height, 3, image, stride);
+//        std::cout << "done " << path << std::endl;
+//
+//
+//
+//        free(image);
+//        count++;
+//        //break;
 //    }
-//        
 //
-//    // flip image
-//    int stride = width * 3;
-//    uint8_t* row = (uint8_t*)malloc((size_t)stride);
-//    for (int y = 0; y < height / 2; ++y)
-//    {
-//        memcpy(row, &image[y * stride], (size_t)stride);
-//        memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
-//        memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
-//    }
-//
-//    char path[512];
-//    sprintf_s(path, "geosstrtreeexample.png");
-//
-//    stbi_write_png(path, width, height, 3, image, stride);
-//    std::cout << "done " << path << std::endl;
-//
-//    free(image);
 //}
-
-//void testing() {
-//    // Initialize the GEOS library
-//    geos::geom::GeometryFactory::Ptr factory = geos::geom::GeometryFactory::create();
-//
-//    // Example vector of vector of jcv_point for demonstration purposes
-//    std::vector<std::vector<jcv_point>> lines = {
-//        {{74.151,-13.1434}, {74.4412,-13.2563}},
-//        {{74.4412,-13.2563}, {75.11,-13.3341}},
-//        {{75.11,-13.3341}, {75.4286,-13.4584}},
-//        {{75.4286,-13.4584}, {76.067,-13.5327}, {76.4145,-13.6692}},
-//        {{86.8501,-15.9683}, {87.244,-16.132}},
-//        {{87.244,-16.132}, {87.8278,-16.1999}},
-//        {{87.8278,-16.1999}, {88.2279,-16.3668}, {88.8051,-16.4339}, {89.2115,-16.6037}, {89.7823,-16.6701}},
-//        {{89.7823,-16.6701}, {90.1951,-16.843}}
-//        
-//    };
-//
-//    // Create a MultiLineString from the vector of lines
-//    std::unique_ptr<geos::geom::MultiLineString> multiLine = makeMultiLineString(lines, factory.get());
-//
-//    // Use LineMerger to merge the MultiLineString
-//    geos::operation::linemerge::LineMerger lineMerger;
-//    lineMerger.add(multiLine.get());
-//
-//    // Get the merged result
-//    auto merged(lineMerger.getMergedLineStrings());
-//
-//    // Print the result (for demonstration purposes)
-//    for (const auto& line : merged) {
-//		std::cout << line->toString() << std::endl;
-//	}
-//}
-
-// Function to convert PointDB to jcv_point
-inline jcv_point convertPointDBToJcvPoint(const PointDB& point) {
-    return { point.x, point.y };
-}
-
-// Function to convert vector of vector of PointDB to vector of vector of jcv_point
-std::vector<std::vector<jcv_point>> pointDBtoJCV(const std::vector<std::vector<PointDB>>& points) {
-    std::vector<std::vector<jcv_point>> result;
-    result.reserve(points.size()); // Reserve space to improve performance
-
-    for (const auto& row : points) {
-        std::vector<jcv_point> newRow;
-        newRow.reserve(row.size()); // Reserve space to improve performance
-        for (const auto& point : row) {
-            newRow.push_back(convertPointDBToJcvPoint(point));
-        }
-        result.push_back(std::move(newRow));
-    }
-
-    return result;
-}
-
-void runactualgeos()
-{
-    std::string filename = "lanes.csv";
-    std::map<long long, std::vector<std::vector<PointDB>>> lanedata = readActualCSV(filename);
-    std::cout << "Number of timestamps: " << lanedata.size() << std::endl;
-    int count = 0;
-    uint32_t totaltime = 0;
-    for (const auto& entry : lanedata) {
-        /*if (count != 10) {
-            count++;
-            continue;
-        }*/
-        //std::cout << "Timestamp: " << entry.first << std::endl;
-        std::vector<std::vector<PointDB>> inlanes = entry.second; // all lanes in one timestemp
-
-        std::vector<std::vector<PointDB>> lanes;
-        for (const auto& inlane : inlanes) {
-            std::vector<PointDB> line;
-            for (uint32_t i = 0; i < inlane.size(); i += 1) {
-                line.push_back(inlane[i]);
-            }
-            lanes.push_back(line);
-        }
-
-        //std::cout << "Number of lanes: " << lanes.size() << std::endl;
-
-        auto start = std::chrono::high_resolution_clock::now();
-
-        std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lanes);
-
-        auto lanelines = pointDBtoJCV(lanes);
-
-        vorcon vc;
-        int width = 512;
-        int height = 512;
-        size_t imagesize = (size_t)(width * height * 3);
-        unsigned char* image = (unsigned char*)malloc(imagesize);
-        memset(image, 0, imagesize);
-
-        jcv_point dimensions;
-        dimensions.x = (jcv_real)width;
-        dimensions.y = (jcv_real)height;
-
-        std::vector<CGAL_Point> points = convert_to_cgal_points(lanes, vc);
-        vc.rect = { bounding_box[0].first, bounding_box[0].second, bounding_box[1].first, bounding_box[1].second };
-        memset(&vc.diagram, 0, sizeof(jcv_diagram));
-
-        /*auto end = std::chrono::high_resolution_clock::now();
-
-        std::chrono::duration<double, std::milli> elapsed = end - start;
-        std::cout << "Elapsed time -- preprocess: " << elapsed.count() << " ms" << std::endl;*/
-
-        //start = std::chrono::high_resolution_clock::now();
-
-        Alpha_shape_2 A(points.begin(), points.end(),
-            FT(60), // 11 - 50+
-            Alpha_shape_2::GENERAL);
-
-        std::vector<CGAL_Segment> segs;
-        alpha_edges(A, std::back_inserter(segs));
-        auto alpha_bdry = segments_to_path(segs);
-      
-        /*end = std::chrono::high_resolution_clock::now();
-        elapsed = end - start;
-        std::cout << "Elapsed time -- alphashape: " << elapsed.count() << " ms" << std::endl;*/
-
-        //start = std::chrono::high_resolution_clock::now();
-
-        jcv_diagram_generate(vc.num_points, vc.points, &vc.rect, 0, &vc.diagram);
-
-        /*end = std::chrono::high_resolution_clock::now();
-        elapsed = end - start;
-        std::cout << "Elapsed time -- voronoi gen: " << elapsed.count() << " ms" << std::endl;
-
-        start = std::chrono::high_resolution_clock::now();*/
-
-        //const jcv_site* sites = jcv_diagram_get_sites(&vc.diagram);
-        //for (int i = 0; i < vc.diagram.numsites; ++i)
-        //{
-        //    const jcv_site* site = &sites[i];
-
-        //    srand((unsigned int)site->index); // for generating colors for the triangles
-
-        //    unsigned char color_tri[3];
-        //    unsigned char basecolor = 120;
-        //    color_tri[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-        //    color_tri[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-        //    color_tri[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-
-        //    jcv_point s = remap(&site->p, &vc.diagram.min, &vc.diagram.max, &dimensions);
-
-        //    const jcv_graphedge* e = site->edges;
-        //    while (e)
-        //    {
-        //        jcv_point p0 = remap(&e->pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
-        //        jcv_point p1 = remap(&e->pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
-
-        //        draw_triangle(&s, &p0, &p1, image, width, height, 3, color_tri);
-        //        e = e->next;
-        //    }
-        //}
-
-        // If all you need are the edges
-        const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
-        int edgecount = 1;
-        std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
-        unsigned char color_red[] = { 255, 0, 0 };
-        unsigned char color_blue[] = { 75, 75, 230 };
-        unsigned char color_green[] = { 0, 255, 0 };
-        unsigned char color_white[] = { 255, 255, 255 };
-        unsigned char color_orange[] = { 255, 153, 51 };
-        unsigned char color_yellow[] = { 250, 255, 0 };
-        unsigned char color_cyan[] = { 0, 255, 255 };
-        unsigned char color_purple[] = { 255, 0, 255 };
-        unsigned char color_lightpurple[] = { 178, 102, 255 };
-        std::vector<unsigned char*> colors = { color_blue, color_orange, color_white, color_yellow, color_cyan, color_purple, color_lightpurple };
-
-        while (edge)
-        {
-            edge_lines.push_back(make_pair(edge->pos[0], edge->pos[1]));
-            edge = jcv_diagram_get_next_edge(edge);
-            
-            edgecount++;
-        }
-
-        /*end = std::chrono::high_resolution_clock::now();
-        elapsed = end - start;
-        std::cout << "Elapsed time -- get edge: " << elapsed.count() << " ms" << std::endl;
-
-        start = std::chrono::high_resolution_clock::now();*/
-
-        auto filteredCenterlines = filterCenterlines(edge_lines, alpha_bdry, lanelines);
-        //std::cout << "Number of centerlines: " << filteredCenterlines.size() << std::endl;
-
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> elapsed = end - start;
-        std::cout << " -------- Elapsed time: " << elapsed.count() << " ms" << std::endl;
-        totaltime += elapsed.count();
-        std::cout << "avg time: " << totaltime / (count + 1) << " ms" << std::endl;
-
-        int cor = 0;
-        for (const auto& seg : filteredCenterlines) {
-            //std::cout << "ctl size: " << seg.size() << std::endl;
-            auto color = colors[cor % 6];
-            for (int i = 1; i < seg.size(); i++) {
-				jcv_point p0 = remap(&seg[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
-				jcv_point p1 = remap(&seg[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
-
-                draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color);
-			}
-			cor++;
-        }
-
-        /*jcv_delauney_iter delauney;
-        jcv_delauney_begin(&vc.diagram, &delauney);
-        jcv_delauney_edge delauney_edge;
-        unsigned char color_delauney[] = { 64, 64, 255 };
-        while (jcv_delauney_next(&delauney, &delauney_edge))
-        {
-            jcv_point p0 = remap(&delauney_edge.pos[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
-            jcv_point p1 = remap(&delauney_edge.pos[1], &vc.diagram.min, &vc.diagram.max, &dimensions);
-            draw_line((int)p0.x, (int)p0.y, (int)p1.x, (int)p1.y, image, width, height, 3, color_delauney);
-        }*/
-        
-
-
-        /* ----------- draw lane ------------- */
-
-        // draw this frame lane lines
-        for (const auto& lane : lanes) {
-            jcv_point p0 = remap(&lane[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
-            for (const auto& point : lane) {
-                jcv_point p = remap(&point, &vc.diagram.min, &vc.diagram.max, &dimensions);
-                draw_line((double)p0.x, (double)p0.y, (double)p.x, (double)p.y, image, width, height, 3, color_red);
-                p0 = p;
-            }
-        }
-
-        for (uint32_t i = 1; i < alpha_bdry.size(); i++)
-        {
-            auto curr = remap(&alpha_bdry[i], &vc.diagram.min, &vc.diagram.max, &dimensions);
-            auto prev = remap(&alpha_bdry[i - 1], &vc.diagram.min, &vc.diagram.max, &dimensions);
-            draw_line(curr.x, curr.y, prev.x, prev.y, image, width, height, 3, color_green);
-        }
-
-        // flip image
-        int stride = width * 3;
-        uint8_t* row = (uint8_t*)malloc((size_t)stride);
-        for (int y = 0; y < height / 2; ++y)
-        {
-            memcpy(row, &image[y * stride], (size_t)stride);
-            memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
-            memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
-        }
-
-        char path[512];
-        sprintf_s(path, "img/out%d.png", count);
-        //sprintf_s(path, "out%d.png", count);
-
-        stbi_write_png(path, width, height, 3, image, stride);
-        std::cout << "done " << path << std::endl;
-
-
-
-        free(image);
-        count++;
-        //break;
-    }
-
-}
 
 double dotProduct(const jcv_point& p1, const jcv_point& p2) {
     return p1.x * p2.x + p1.y * p2.y;
@@ -854,27 +676,25 @@ double perpendicularDistance(const jcv_point& start, const jcv_point& end, const
 void runactualvordist()
 {
     std::string filename = "lanes.csv";
-    std::map<long long, std::vector<std::vector<PointDB>>> lanedata = readActualCSV(filename);
+    std::map<long long, std::vector<std::vector<jcv_point>>> lanedata = readActualCSV(filename);
     std::cout << "Number of timestamps: " << lanedata.size() << std::endl;
     int count = 0;
     double totaltime = 0;
     for (const auto& entry : lanedata) {
-        std::vector<std::vector<PointDB>> inlanes = entry.second; // all lanes in one timestemp
+        std::vector<std::vector<jcv_point>> lanelines = entry.second; // all lanes in one timestemp
 
-        std::vector<std::vector<PointDB>> lanes;
+        /*std::vector<std::vector<jcv_point>> lanelines;
         for (const auto& inlane : inlanes) {
-            std::vector<PointDB> line;
+            std::vector<jcv_point> line;
             for (uint32_t i = 0; i < inlane.size(); i += 1) {
                 line.push_back(inlane[i]);
             }
-            lanes.push_back(line);
-        }
+            lanelines.push_back(line);
+        }*/
 
         auto start = std::chrono::high_resolution_clock::now();
 
-        std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lanes);
-
-        auto lanelines = pointDBtoJCV(lanes);
+        std::vector<std::pair<double, double>> bounding_box = findBoundingBox(lanelines);
 
         vorcon vc;
         int width = 512;
@@ -887,7 +707,7 @@ void runactualvordist()
         dimensions.x = (jcv_real)width;
         dimensions.y = (jcv_real)height;
 
-        std::vector<CGAL_Point> points = convert_to_cgal_points(lanes, vc);
+        std::vector<CGAL_Point> points = convert_to_cgal_points(lanelines, vc);
         vc.rect = { bounding_box[0].first, bounding_box[0].second, bounding_box[1].first, bounding_box[1].second };
         memset(&vc.diagram, 0, sizeof(jcv_diagram));
 
@@ -898,19 +718,6 @@ void runactualvordist()
         std::vector<CGAL_Segment> segs;
         alpha_edges(A, std::back_inserter(segs));
         auto alpha_bdry = segments_to_path(segs);
-
-        /*jcv_clipping_polygon clpoly;
-        jcv_clipper* clipper = 0;
-        clpoly.points = alpha_bdry.data();
-        clpoly.num_points = alpha_bdry.size();
-
-        jcv_clipper polyclipper;
-        polyclipper.test_fn = jcv_clip_polygon_test_point;
-        polyclipper.clip_fn = jcv_clip_polygon_clip_edge;
-        polyclipper.fill_fn = jcv_clip_polygon_fill_gaps;
-        polyclipper.ctx = &clpoly;
-
-        clipper = &polyclipper;*/
 
         jcv_diagram_generate(vc.num_points, vc.points, &vc.rect, 0, &vc.diagram);        
 
@@ -983,7 +790,7 @@ void runactualvordist()
         /* ----------- draw lane ------------- */
 
         // draw this frame lane lines
-        for (const auto& lane : lanes) {
+        for (const auto& lane : lanelines) {
             jcv_point p0 = remap(&lane[0], &vc.diagram.min, &vc.diagram.max, &dimensions);
             for (const auto& point : lane) {
                 jcv_point p = remap(&point, &vc.diagram.min, &vc.diagram.max, &dimensions);
@@ -1025,68 +832,69 @@ void runactualvordist()
 
 }
 
+struct ComparePoints {
+    bool operator()(const jcv_point& p1, const jcv_point& p2) {
+        return p1.x > p2.x; // Smaller x first
+    }
+};
+
+std::vector<jcv_point> findBoundary(const std::vector<std::vector<jcv_point>> lanes) {
+    std::priority_queue<jcv_point, std::vector<jcv_point>, ComparePoints> pq;
+    for (const auto& lane : lanes) {
+		for (const auto& point : lane) {
+			pq.push(point);
+		}
+	}
+
+    std::vector<jcv_point> left;
+    std::vector<jcv_point> right;
+    while (!pq.empty()) {
+        auto pt = pq.top();
+        double start = pt.x;
+        double end = start + 2;
+        jcv_point miny = pt;
+        jcv_point maxy = pt;
+		pq.pop();
+        while (!pq.empty() && pq.top().x < end) {
+            auto next = pq.top();
+            pq.pop();
+            if (next.y < miny.y) {
+                miny = next;
+            }
+            else if (next.y > maxy.y) {
+                maxy = next;
+            }
+        }
+        left.push_back(miny);
+        right.push_back(maxy);
+	}
+    std::reverse(right.begin(), right.end());
+    left.insert(left.end(), right.begin(), right.end());
+    return left;
+}
+
 void testing() {
-    geos::io::WKTReader reader;
-    geos::io::WKTWriter writer;
-    GeometryFactory::Ptr factory = GeometryFactory::create();
-    std::unique_ptr<Geometry> boundary(reader.read("POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))")); // Simple square boundary
+	std::vector<std::vector<jcv_point>> lanes = {
+		{ {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4} },
+		{ {0, 1}, {1, 2}, {2, 3}, {3, 4}, {4, 5} },
+		{ {0, 2}, {1, 3}, {2, 4}, {3, 5}, {4, 6} },
+		{ {0, 3}, {1, 4}, {2, 5}, {3, 6}, {4, 7} },
+		{ {0, 4}, {1, 5}, {2, 6}, {3, 7}, {4, 8} }
+	};
 
-    int gridSize = 10; // Define the size of the grid
-    std::vector<std::unique_ptr<Geometry>> gridCells = createGridCells(boundary.get(), gridSize, factory.get());
+	auto bdry = findBoundary(lanes);
 
-    // Define lanelines
-    std::vector<std::unique_ptr<Geometry>> lanelines;
-    lanelines.push_back(std::unique_ptr<Geometry>(reader.read("LINESTRING (35 15, 45 45)")));
-    lanelines.push_back(std::unique_ptr<Geometry>(reader.read("LINESTRING (25 25, 35 35)")));
-
-    // Define centerlines
-    std::vector<std::unique_ptr<Geometry>> centerlines;
-    centerlines.push_back(std::unique_ptr<Geometry>(reader.read("LINESTRING (10 10, 20 20)")));
-    centerlines.push_back(std::unique_ptr<Geometry>(reader.read("LINESTRING (20 20, 30 30)")));
-
-    TemplateSTRtree<const Geometry*> gridStrTree;
-    TemplateSTRtree<const Geometry*> laneStrTree;
-    for (const auto& cell : gridCells) {
-        gridStrTree.insert(cell->getEnvelopeInternal(), cell.get());
-    }
-
-    // Split and index lanelines
-    splitAndIndexLanelines(gridCells, lanelines, laneStrTree);
-
-    // Output the grid cells
-    std::cout << "Grid Cells:" << std::endl;
-    for (const auto& cell : gridCells) {
-        std::cout << writer.write(cell.get()) << std::endl;
-    }
-
-    // Example point query
-    std::unique_ptr<Point> point(factory->createPoint(Coordinate(15.0, 15.0))); // Example point coordinates
-    if (isPointInBoundary(point.get(), gridStrTree)) {
-        std::cout << "Point is within the boundary." << std::endl;
-    }
-    else {
-        std::cout << "Point is outside the boundary." << std::endl;
-    }
-
-    // Check if centerlines are too close to lanelines
-    double minDistance = 5.0; // Minimum distance threshold
-    std::cout << "Centerline Proximity Check:" << std::endl;
-    for (const auto& centerline : centerlines) {
-        if (isCenterlineTooCloseToLanelines(centerline.get(), laneStrTree, minDistance)) {
-            std::cout << "A centerline is too close to a laneline." << std::endl;
-        }
-        else {
-            std::cout << "A centerline is at a safe distance from lanelines." << std::endl;
-        }
-    }
+    for (const auto& pt : bdry) {
+		std::cout << pt.x << ", " << pt.y << std::endl;
+	}
 }
 
 int main() {
     //runsampledata();
     //runactualdata();
-    //testing();
+    testing();
     //runactualgeos();
-    runactualvordist();
+    //runactualvordist();
 	return 0;
 }               
 
