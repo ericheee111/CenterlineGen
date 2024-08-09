@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <float.h>
+#include <iostream>
 
 #include <assert.h>
 
@@ -21,7 +22,7 @@ extern "C" {
 #endif
 
 #ifndef JCV_REAL_TYPE_EPSILON
-    #define JCV_REAL_TYPE_EPSILON FLT_EPSILON
+    #define JCV_REAL_TYPE_EPSILON DBL_EPSILON
 #endif
 
 #ifndef JCV_ATAN2
@@ -37,7 +38,11 @@ extern "C" {
 #endif
 
 #ifndef JCV_FLT_MAX
-    #define JCV_FLT_MAX 3.402823466e+38F
+    #define JCV_FLT_MAX 1.7976931348623158e+308
+#endif
+
+#ifndef JCV_DBL_MAX
+    #define JCV_DBL_MAX 3.402823466e+38F
 #endif
 
 #ifndef JCV_EDGE_INTERSECT_THRESHOLD
@@ -216,7 +221,7 @@ struct jcv_diagram_
 
 static const int JCV_DIRECTION_LEFT  = 0;
 static const int JCV_DIRECTION_RIGHT = 1;
-static const jcv_real JCV_INVALID_VALUE = (jcv_real)-JCV_FLT_MAX;
+static const jcv_real JCV_INVALID_VALUE = (jcv_real)-JCV_DBL_MAX;
 
 // jcv_real
 
@@ -1210,6 +1215,7 @@ static jcv_edge* jcv_create_gap_edge(jcv_context_internal* internal, jcv_site* s
 
 void jcv_boxshape_fillgaps(const jcv_clipper* clipper, jcv_context_internal* allocator, jcv_site* site)
 {
+    //std::cout << "in jcv_boxshape_fillgaps" << std::endl;
     // They're sorted CCW, so if the current->pos[1] != next->pos[0], then we have a gap
     jcv_graphedge* current = site->edges;
     if( !current )
@@ -1242,12 +1248,24 @@ void jcv_boxshape_fillgaps(const jcv_clipper* clipper, jcv_context_internal* all
         current = gap;
         next = site->edges;
     }
-
+    int count;
+    count = 0;
     while( current && next )
     {
+        assert(count < 20);
+        /*if (count > 20) {
+            break;
+        }*/
+        count++;
+        //std::cout << "in fill gap while loop" << std::endl;
         int current_edge_flags = jcv_get_edge_flags(&current->pos[1], &clipper->min, &clipper->max);
+        /*std::cout << "---------- cur edge flag: " << current_edge_flags << "; cur pos[1]: " << current->pos[1].x << " " << current->pos[1].y 
+            << "; clp min: " << clipper->min.x << " " << clipper->min.y << " max: " 
+            << clipper->max.x << " " << clipper->max.y << std::endl;*/
+        //std::cout << "----------------------------- nxt pos[0]: " << next->pos[0].x << " " << next->pos[0].y << std::endl;
         if( current_edge_flags && !jcv_point_eq(&current->pos[1], &next->pos[0]))
         {
+            //std::cout << "xxxxxxxxxxxxxx in if( current_edge_flags && !jcv_point_eq(&current->pos[1], &next->pos[0]))" << std::endl;
             // Cases:
             //  Current and Next on the same border
             //  Current on one border, and Next on another border
@@ -1422,8 +1440,8 @@ static int jcv_prune_duplicates(jcv_context_internal* internal, jcv_rect* rect)
     jcv_site* sites = internal->sites;
 
     jcv_rect r;
-    r.min.x = r.min.y = JCV_FLT_MAX;
-    r.max.x = r.max.y = -JCV_FLT_MAX;
+    r.min.x = r.min.y = JCV_DBL_MAX;
+    r.max.x = r.max.y = -JCV_DBL_MAX;
 
     int offset = 0;
     // Prune duplicates first
@@ -1431,6 +1449,7 @@ static int jcv_prune_duplicates(jcv_context_internal* internal, jcv_rect* rect)
     {
         const jcv_site* s = &sites[i];
         // Remove duplicates, to avoid anomalies
+        //std::cout << "prune dup: " << s->p.x << ", " << s->p.y << "; " << sites[i - 1].p.x << ", " << sites[i - 1].p.y << std::endl;
         if( i > 0 && jcv_point_eq(&s->p, &sites[i - 1].p) )
         {
             offset++;
@@ -1454,8 +1473,8 @@ static int jcv_prune_not_in_shape(jcv_context_internal* internal, jcv_rect* rect
     jcv_site* sites = internal->sites;
 
     jcv_rect r;
-    r.min.x = r.min.y = JCV_FLT_MAX;
-    r.max.x = r.max.y = -JCV_FLT_MAX;
+    r.min.x = r.min.y = JCV_DBL_MAX;
+    r.max.x = r.max.y = -JCV_DBL_MAX;
 
     int offset = 0;
     for (int i = 0; i < num_sites; i++)
@@ -1523,7 +1542,7 @@ void jcv_diagram_generate_useralloc(int num_points, const jcv_point* points, con
 {
     if( d->internal )
         jcv_diagram_free( d );
-
+    //std::cout << "num points: " << num_points << std::endl;
     jcv_context_internal* internal = jcv_alloc_internal(num_points, userallocctx, allocfn, freefn);
 
     internal->beachline_start = jcv_halfedge_new(internal, 0, 0);
@@ -1561,9 +1580,11 @@ void jcv_diagram_generate_useralloc(int num_points, const jcv_point* points, con
     internal->clipper = *clipper;
 
     jcv_rect tmp_rect;
-    tmp_rect.min.x = tmp_rect.min.y = JCV_FLT_MAX;
-    tmp_rect.max.x = tmp_rect.max.y = -JCV_FLT_MAX;
+    tmp_rect.min.x = tmp_rect.min.y = JCV_DBL_MAX;
+    tmp_rect.max.x = tmp_rect.max.y = -JCV_DBL_MAX;
     jcv_prune_duplicates(internal, &tmp_rect);
+    //std::cout << "aft prune dup: " << tmp_rect.min.x << ", " << tmp_rect.min.y << ", " << tmp_rect.max.x << ", " << tmp_rect.max.y << std::endl;
+
 
     // Prune using the test second
     if (internal->clipper.test_fn)
@@ -1578,7 +1599,11 @@ void jcv_diagram_generate_useralloc(int num_points, const jcv_point* points, con
         if (!rect) {
             // In the case of all sites being all on a horizontal or vertical line, the
             // rect area will be zero, and the diagram generation will most likely fail
+            //std::cout << "before round: " << tmp_rect.min.x << ", " << tmp_rect.min.y << ", " << tmp_rect.max.x << ", " << tmp_rect.max.y << std::endl;
+
             jcv_rect_round(&tmp_rect);
+            //std::cout << "before inflate: " << tmp_rect.min.x << ", " << tmp_rect.min.y << ", " << tmp_rect.max.x << ", " << tmp_rect.max.y << std::endl;
+
             jcv_rect_inflate(&tmp_rect, 10);
 
             internal->clipper.min = tmp_rect.min;
@@ -1587,6 +1612,8 @@ void jcv_diagram_generate_useralloc(int num_points, const jcv_point* points, con
     }
 
     internal->rect = rect ? *rect : tmp_rect;
+
+    //std::cout << "internalBBox: " << internal->rect.min.x << ", " << internal->rect.min.y << ", " << internal->rect.max.x << ", " << internal->rect.max.y << std::endl;
 
     d->min      = internal->rect.min;
     d->max      = internal->rect.max;

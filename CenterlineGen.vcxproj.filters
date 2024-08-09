@@ -21,9 +21,6 @@
     <ClCompile Include="DBSCAN.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="voronoi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="stb_wrapper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -45,9 +42,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="jc_voronoi_clip.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="voronoi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="stb_image_write.h">
