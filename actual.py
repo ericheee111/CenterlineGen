@@ -125,8 +125,13 @@ for timestamp, smoothed_lines in parsed_data.items():
     # break
     # Create a new figure
     fig, ax = plt.subplots()
+    smslines = [np.array([1.5484909, -0.21024238]),
+                np.array([1.5413352, -0.21024236]),
+                np.array([1.5378445, -0.21024236]),
+                np.array([1.5343539, -0.21024235]),
+                np.array([1.5308806, -0.19333011])]
     # polygons = [Polygon(line) for line in smoothed_lines]
-    polygons = [LineString(line) for line in smoothed_lines]
+    polygons = [LineString(line) for line in smslines]
 
     # # sort lines[0] by y coordinate and store in lane0
     # leftmostlane = np.array(lines[leftmost_label])

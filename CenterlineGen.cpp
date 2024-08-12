@@ -635,6 +635,97 @@ std::vector<jcv_point> findBoundary(const std::vector<std::vector<jcv_point>> la
     return left;
 }
 
+void test() {
+    std::cout << "run" << std::endl;
+    std::vector<std::vector<jcv_point>> lanelines = { {{1.5484909e5, -0.21024238e5},
+                                                          {1.5413352e5, -0.21024236e5},
+                                                          {1.5378445e5, -0.21024236e5},
+                                                          {1.5343539e5, -0.21024235e5},
+                                                          {1.5308806e5, -0.19333011e5}} }; // all lanes in one timestemp
+    vorcon vc;
+    int width = 256;
+    int height = 256;
+    size_t imagesize = (size_t)(width * height * 3);
+    unsigned char* image = (unsigned char*)malloc(imagesize);
+    memset(image, 0, imagesize);
+
+    jcv_point dimensions;
+    dimensions.x = (jcv_real)width;
+    dimensions.y = (jcv_real)height;
+
+    std::vector<CGAL_Point> points = convert_to_cgal_points(lanelines, vc); // convert + store points in vc
+    memset(&vc.diagram, 0, sizeof(jcv_diagram));
+    jcv_diagram_generate(vc.num_points, (const jcv_point*)vc.points, 0, 0, &vc.diagram);
+    const jcv_edge* edge = jcv_diagram_get_edges(&vc.diagram);
+    std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
+    while (edge)
+    {
+        
+        edge_lines.push_back(make_pair(edge->pos[0], edge->pos[1]));
+        edge = jcv_diagram_get_next_edge(edge);
+    }
+
+    unsigned char color_red[] = { 255, 0, 0 };
+    unsigned char color_blue[] = { 75, 75, 230 };
+    unsigned char color_green[] = { 0, 255, 0 };
+    unsigned char color_white[] = { 255, 255, 255 };
+    unsigned char color_orange[] = { 255, 153, 51 };
+    unsigned char color_yellow[] = { 250, 255, 0 };
+    unsigned char color_cyan[] = { 0, 255, 255 };
+    unsigned char color_purple[] = { 255, 0, 255 };
+    unsigned char color_lightpurple[] = { 178, 102, 255 };
+    std::vector<unsigned char*> colors = { color_blue, color_orange, color_white, color_yellow, color_cyan, color_purple, color_lightpurple };
+    int cor = 0;
+    std::cout << "edge line size: " << edge_lines.size() << std::endl;
+    for (auto& e : edge_lines) {
+         /*auto color = colors[cor % 6];*/
+        unsigned char color[] = { rand()%255, rand() % 255, rand() % 255 };
+
+         jcv_point p0 = remap(&e.first, &vc.diagram.min, &vc.diagram.max, &dimensions);
+         jcv_point p1 = remap(&e.second, &vc.diagram.min, &vc.diagram.max, &dimensions);
+         std::cout << "edge: " << p0.x << " " << p0.y << "; " << p1.x << " " << p1.y << std::endl;
+
+         draw_line(p0.x, p0.y, p1.x, p1.y, image, width, height, 3, color);
+
+
+         cor++;
+    }
+
+    for (auto& pt : lanelines[0]) {
+        jcv_point p = remap(&pt, &vc.diagram.min, &vc.diagram.max, &dimensions);
+        plot(p.x+1, p.y+1, image, width, height, 3, color_white);
+        plot(p.x-1, p.y-1, image, width, height, 3, color_white);
+        plot(p.x+1, p.y-1, image, width, height, 3, color_white);
+        plot(p.x-1, p.y+1, image, width, height, 3, color_white);
+        plot(p.x+1, p.y, image, width, height, 3, color_white);
+        plot(p.x-1, p.y, image, width, height, 3, color_white);
+        plot(p.x, p.y+1, image, width, height, 3, color_white);
+        plot(p.x, p.y-1, image, width, height, 3, color_white);
+        plot(p.x, p.y, image, width, height, 3, color_white);
+    }
+
+    // flip image
+    int stride = width * 3;
+    uint8_t* row = (uint8_t*)malloc((size_t)stride);
+    for (int y = 0; y < height / 2; ++y)
+    {
+        memcpy(row, &image[y * stride], (size_t)stride);
+        memcpy(&image[y * stride], &image[(height - 1 - y) * stride], (size_t)stride);
+        memcpy(&image[(height - 1 - y) * stride], row, (size_t)stride);
+    }
+
+    char path[512];
+    sprintf_s(path, "testimg.png");
+    // sprintf_s(path, "out%d.png", count);
+
+    stbi_write_png(path, width, height, 3, image, stride);
+    std::cout << "done " << path << std::endl;
+
+    jcv_diagram_free(&vc.diagram);
+    free(image);
+
+}
+
 void runactualvordist()
 {
     std::string filename = "lanes.csv";
@@ -699,7 +790,7 @@ void runactualvordist()
         //std::cout << "after voronoi" << std::endl;
         //  If all you need are the edges
         const jcv_edge *edge = jcv_diagram_get_edges(&vc.diagram);
-        int edgecount = 1;
+        //int edgecount = 1;
         std::vector<std::pair<jcv_point, jcv_point>> edge_lines;
 
         vor_manager vm;
@@ -726,8 +817,9 @@ void runactualvordist()
 
             edge = jcv_diagram_get_next_edge(edge);
 
-            edgecount++;
+            //edgecount++;
         }
+        //std::cout << "edge cnt: " << edge_lines.size() << std::endl;
 
         /*for (int i = 0; i < edge_lines.size(); i++) {
             auto spair = vm.getEdgeSites(edge_lines[i].first, edge_lines[i].second);
@@ -914,7 +1006,7 @@ void runactualvordist()
         jcv_diagram_free(&vc.diagram);
         free(image);
         count++;
-        // break;
+         //break;
     }
 }
 
@@ -929,10 +1021,8 @@ void testing()
 
 int main()
 {
-    // runsampledata();
-    // runactualdata();
     // testing();
-    // runactualgeos();
     runactualvordist();
+    //test();
     return 0;
 }

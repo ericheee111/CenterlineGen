@@ -69,6 +69,5 @@ public:
 
 private:
     std::unordered_map<LineSeg, edge_info, LineSegmentHash> lineMap;
-    //std::map<std::array<double,4>, edge_info> lineMap;
 };
 

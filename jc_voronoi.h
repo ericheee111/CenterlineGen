@@ -1250,10 +1250,13 @@ void jcv_boxshape_fillgaps(const jcv_clipper* clipper, jcv_context_internal* all
     }
     int count;
     count = 0;
-    while( current && next )
+    
+    while( current && next)
     {
-        assert(count < 20);
-        /*if (count > 20) {
+        //std::cout << "sitenum: " << allocator->numsites << std::endl;
+        //assert(count < 20);
+        /*if (count > allocator->numsites + 1) {
+            std::cout << "break" << std::endl;
             break;
         }*/
         count++;
@@ -1263,6 +1266,7 @@ void jcv_boxshape_fillgaps(const jcv_clipper* clipper, jcv_context_internal* all
             << "; clp min: " << clipper->min.x << " " << clipper->min.y << " max: " 
             << clipper->max.x << " " << clipper->max.y << std::endl;*/
         //std::cout << "----------------------------- nxt pos[0]: " << next->pos[0].x << " " << next->pos[0].y << std::endl;
+
         if( current_edge_flags && !jcv_point_eq(&current->pos[1], &next->pos[0]))
         {
             //std::cout << "xxxxxxxxxxxxxx in if( current_edge_flags && !jcv_point_eq(&current->pos[1], &next->pos[0]))" << std::endl;
@@ -1271,6 +1275,7 @@ void jcv_boxshape_fillgaps(const jcv_clipper* clipper, jcv_context_internal* all
             //  Current on one border, and Next on another border
             //  Current on the corner, Next on the border
             //  Current on the corner, Next on another border (another corner in between)
+            
 
             int next_edge_flags = jcv_get_edge_flags(&next->pos[0], &clipper->min, &clipper->max);
             if (current_edge_flags & next_edge_flags)
@@ -1604,7 +1609,7 @@ void jcv_diagram_generate_useralloc(int num_points, const jcv_point* points, con
             jcv_rect_round(&tmp_rect);
             //std::cout << "before inflate: " << tmp_rect.min.x << ", " << tmp_rect.min.y << ", " << tmp_rect.max.x << ", " << tmp_rect.max.y << std::endl;
 
-            jcv_rect_inflate(&tmp_rect, 10);
+            //jcv_rect_inflate(&tmp_rect, 10);
 
             internal->clipper.min = tmp_rect.min;
             internal->clipper.max = tmp_rect.max;
