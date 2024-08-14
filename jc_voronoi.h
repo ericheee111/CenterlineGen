@@ -1609,7 +1609,7 @@ void jcv_diagram_generate_useralloc(int num_points, const jcv_point* points, con
             jcv_rect_round(&tmp_rect);
             //std::cout << "before inflate: " << tmp_rect.min.x << ", " << tmp_rect.min.y << ", " << tmp_rect.max.x << ", " << tmp_rect.max.y << std::endl;
 
-            //jcv_rect_inflate(&tmp_rect, 10);
+            jcv_rect_inflate(&tmp_rect, 10);
 
             internal->clipper.min = tmp_rect.min;
             internal->clipper.max = tmp_rect.max;

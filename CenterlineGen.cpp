@@ -830,7 +830,8 @@ void runactualvordist()
                 << s0->p.x << " " << s0->p.y << ", s1: " << s1->p.x << " " << s1->p.y << std::endl;
         }*/
 
-        auto filteredCenterlines = filterCenterlinesByBoundary(edge_lines, alpha_bdry);
+        auto filteredCenterlines = MergeCenterlines(edge_lines);
+        //auto filteredCenterlines = filterCenterlinesByBoundary(edge_lines, alpha_bdry);
 
         // std::cout << "centerlines size: " << filteredCenterlines.size() << std::endl;
 
@@ -1012,16 +1013,33 @@ void runactualvordist()
 
 void testing()
 {
-    jcv_point p0 = {0, 0};
-    jcv_point p1 = {2, 3};
-    jcv_point p2 = {3, 4};
-    auto x = calcDist(p0, p1, p2);
-    std::cout << "pt: " << p0.x << " " << p0.y << ", line st~ed: " << p1.x << " " << p1.y << ", " << p2.x << " " << p2.y << ", dist: " << x << std::endl;
+    //initGEOS(NULL, NULL);
+    GEOSContextHandle_t ctx = GEOS_init_r();
+    GEOSContext_setNoticeHandler_r(ctx, NULL);
+    GEOSContext_setErrorHandler_r(ctx, NULL);
+    
+    /* Coordinates in a buffer (X,Y, X,Y, X,Y) */
+    double coordBuf[] = { 1.0,3.0, 2.0,2.0, 3.0,1.0 };
+    size_t seqSize = 3;
+
+    GEOSCoordSequence* seq = GEOSCoordSeq_copyFromBuffer_r(
+        ctx,
+        coordBuf,
+        seqSize,
+        0, /* hasZ */
+        0  /* hasM */
+    );
+
+    unsigned int size = 0;
+    std::cout << "Number of points: " << GEOSCoordSeq_getSize_r(ctx, seq, &size) << "; " << size << std::endl;
+    assert(seq != NULL);
+
+    GEOSCoordSeq_destroy(seq);
 }
 
 int main()
 {
-    // testing();
+     //testing();
     runactualvordist();
     //test();
     return 0;
